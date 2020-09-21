@@ -1,0 +1,8 @@
+---
+Name: shopextensionroutes
+
+---
+SilverStripe\Control\Director:
+  rules:
+    'ProductController//$Action/$ID/$Name': 'ProductPageController'
+    ajaxcart//$Action/$ID/$Name: AjaxCartController

@@ -1,0 +1,25 @@
+{
+  "name":"innomedia/shopextensions",
+  "description": "Silverstripe 4 Basic Shop Extensions",
+  "license": "BSD-3-Clause",
+  "version": "0.1",
+  "authors": [
+    {
+      "name":"innomedia AG",
+      "email": "ck@innomedia.de"
+    }
+  ],
+  "require": {
+    "silverstripe/framework": "^4"
+  },
+  "autoload": {
+    "psr-4": {
+      "shopextensions\\": "src/"
+    }
+  },
+  "extra": {
+    "expose": [
+      "css"
+    ]
+  }
+}

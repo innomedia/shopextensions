@@ -1,0 +1,64 @@
+table.infotable{
+    border:0 !important;
+    border-top:0 !important;
+}
+
+#Account table th{
+    font-weight: normal;
+    background: transparent;
+    border:0 !important;
+    padding-left: 0;
+    font-size: 18px;
+}
+
+table.infotable td{
+    font-size: 16px;
+    border-color: #ececec;
+}
+
+table td.Total{
+    font-size: 16px;
+}
+
+#OutstandingTable td.right{
+    border:0 !important;
+    font-size: 16px !important;
+}
+
+table.infotable tr td a{
+    text-decoration: none;
+}
+
+#OrderActionsForm_ActionsForm #Start{
+    display: none;
+}
+
+table.infotable{
+    width: 100%;
+    margin-top: 30px;
+}
+
+
+table.infotable td{
+    padding: 6px 0px;
+}
+
+
+@media (max-width: 767.98px) {
+
+}
+
+#OrderActionsForm_ActionsForm .btn-toolbar input{
+    display: inline-block;
+    margin-right: 10px;
+}
+
+
+#OrderActionsForm_ActionsForm .optionset li{
+    margin-left: 0;
+    padding-left: 0;
+}
+
+#OrderActionsForm_ActionsForm_MakePaymentHeader{
+    margin-top: 30px;
+}

@@ -1,0 +1,93 @@
+de:
+  Product:
+    FEATUREDPRODUCTS: "Angebote"
+    FAVORITEPRODUCTS: "Beliebte Produkte"
+    NEWPRODUCTS: "Neueste Produkte"
+    ADDTOCART: "+ Warenkorb"
+    TOARTICLE: "Zum Artikel"
+    SHOPNOW: "Zum Shop"
+    PRODUCT: "Produkt"
+    DESCRIPTION: "Beschreibung"
+    INTOCART: "Bestellen"
+    PRODUCTCONTENTS: "Inhaltsstoffe"
+    ARTNR: "Artikel-Nr."
+    SEARCH: "Produkt suchen"
+  Shop:
+    INCLSHIPPING: "+ Versandkosten" 
+    ReadMoreTitle: "Click here to read more on &quot;{Title}&quot;"
+  Seminar:
+    FEATURED: 'GEFRAGT'
+    ALL: 'Alle Seminare'
+    DATES: 'Termine'
+    MODULE: ''
+    MWST: 'zzgl. MwSt.'
+    WHATSINCLUDED: 'Was ist im Preis inbegriffen'
+    REQEUST: 'Jetzt anfragen'
+  Page:
+    TOPITEM: 'Aktuell beliebt'
+    MOREINFO: 'Mehr Informationen'
+    FOLLOWUSHERE: "Folge uns auch hier"
+    ALLCATEGORIES: "Alle Kategorien"
+    CLOSE: "Schliessen"
+  Coupon:
+    ApplyCoupon: 'Einlösen'
+    RemoveCoupon: 'Coupon löschen'
+  OrderCoupon:
+    EXPIRED: 'Dieser Coupon ist nicht gültig, oder wurde bereits eingelöst.'
+    TOOEARLY: 'Dieser Coupon ist noch nicht gültig.'
+  Gateway:
+    Manual: "Rechnung (ab 2. Bestellung)"
+    PayPal_Express: "PayPal"
+  DiscountConstraint:
+    USELIMITREACHED: "Dieser Coupon wurde aufgebraucht und kann nicht mehr verwendet werden."
+  Order:
+    TotalPrice: 'Gesamt'
+    TOTAL: 'Summe'
+    ADDEDTOCART: 'Produkt wurde dem Warenkorb hinzugefügt'
+    REMOVEDFROMCART: 'Produkt wurde aus dem Warenkorb entfernt'
+    DISCOUNT: 'Rabatt'
+    CANCELATION: 'Stornieren'
+    WASCANCELLED: 'Diese Bestellung wurde storniert'
+    CANCANCEL: 'Sie können diese Bestellung bis zu 24h nach Aufgabe stornieren.'
+    CANTCANCEL: 'Leider können Sie diese Bestellung nicht mehr stornieren. Die Stornierung ist nur bis zu 24h nach Aufgabe möglich.'
+    CANTCANCELSTRIPE: 'Leider können Sie diese Bestellung nicht mehr online stornieren. Bitte schreiben Sie uns an info@nussbaum-group.de'
+  CheckoutForm:
+    SHIPPINGADDRESS: 'Lieferadresse'
+    BILLINGADDRESS: 'Rechnungsadresse'
+    BILLINGADDRESSHINT: 'Hier können Sie eine abweichende Rechnungsadresse angeben. Klicken Sie auf den Button, wenn die Rechnungsadresse von der Lieferadresse abweicht.'
+    ACCOUNTHINT1: 'Damit Sie es zukünftig leichter haben zu bestellen, können Sie hier ein Passwort hinterlegen.'
+    ACCOUNTHINT2: 'Sie haben schon ein Konto?'
+    ACCOUNTHINT3: 'Sie können Sich hier anmelden'
+    KUNDENKONTO: 'Kundenkonto'
+    PAYMENT: 'Bezahlung'
+    COUNTRY: 'Land'
+    WEACCEPT: 'Wir akzeptieren folgende Kreditkarten'
+    FRONT: 'Vorderseite'
+    BACK: 'Rückseite'
+    NOTAX: 'Steuer frei'
+    NOTAXHINT: 'steuerfreie innergemeinschaftliche Lieferung'
+  CouponForm:
+    COUPON: 'Löse Deinen Coupon ein. (Bitte ohne Leerzeichen eingeben.)'
+    COUPONHNT: "Hier können Sie Rabattcodes eingeben, wenn Sie diese erhalten haben. Bitte beachten Sie, dass nur ein Rabattcode auf einmal einlösbar ist."
+    COUPONHEADING: 'Rabattcode einlösen'
+  ApplyCoupon: 'Rabattcode anwenden'
+  RemoveCoupon: 'Rabattcode entfernen'
+  SilverShop\Model\Order:
+    db_Reference: 'Best.-Nr'
+  Innoweb\SilvershopStripe\Checkout\Components\StripeOnsitePayment:
+    CreditCard: 'Kreditkarte'
+  PDFReceipt:
+    ORDERNUMBER: "Bestellnummer"
+    INVOICENUMBER: "Rechnungsnummer"
+    DATE: "Bestelldatum"
+    RECEIPT: "Rechnung"
+    ORDER: "Bestellung"
+    INVOICETEXT: "Das Rechnungsdatum entspricht dem Leistungsdatum"
+    RECEIPTDATE: "Rechnungsdatum"
+  SilverShop\Discounts\Model\Modifiers\OrderDiscountModifier:
+    PLURALNAME: 'Rabatte'
+    SINGULARNAME: 'Rabatt'
+  GiftVoucherProduct:
+    Amount: 'Betrag'
+  ProductsDiscountConstraint:
+    MISSINGPRODUCT: "Sie haben nicht die nötigen Produkte im Warenkorb"

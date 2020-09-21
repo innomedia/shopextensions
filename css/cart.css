@@ -1,0 +1,90 @@
+.itemcount a {
+    font-weight: bold;
+}
+
+th {
+    padding: 0 10px 0 10px;
+}
+
+td {
+    padding: 0 10px 0 10px;
+}
+
+.accountnav__list li {
+    padding: 5px 10px 5px 0px;
+}
+
+.accountnav__list i {
+    padding-right: .5rem;
+}
+
+.sidecart {
+    background-color: #fff;
+    padding: 20px;
+}
+
+.cartIcon {
+    cursor: pointer;
+}
+
+.quantityfield .quantity{
+    max-width: 80px;
+    display: inline-block;
+}
+
+.quantityfield a{
+    display: inline-block;
+    line-height:22px;
+    height:24px;
+    width:24px;
+    text-align: center;
+    background: #ccc ;
+    border-radius: 24px;
+    color:#fff !important;
+}
+.quantityfield input{
+    text-align: center;
+}
+
+.removeall{
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
+}
+
+.removeall:hover{
+    opacity: 1;
+}
+
+.cart-image{
+    max-width: 120px;
+}
+
+@media (max-width: 991.98px) {
+    .cart__unitprice {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .cart-image{
+        max-width: 80px;
+    }
+}
+
+
+.quantity-badge{
+    position: absolute;
+    top:-8px;
+    right:8px;
+    z-index: 10;
+    border-radius: 100%;
+    width: 25px;
+    line-height: 18px;
+    height: 25px;
+}
+
+.badge-green {
+    color: #fff;
+    font-size: 14px;
+
+}

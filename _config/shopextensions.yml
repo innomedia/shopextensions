@@ -1,0 +1,32 @@
+---
+Name: shopextensions
+---
+SilverStripe\Core\Injector\Injector:
+  SilverShop\Checkout\OrderEmailNotifier:
+    class: CustomOrderEmailNotifier
+SilverStripe\ORM\FieldType\DBCurrency:
+  currency_symbol: '€'
+SilverShop\Page\AccountPageController:
+  extensions:
+  - ShopExtensions\AccountPageControllerExtension
+SilverShop\Page\CheckoutPageController:
+  extensions:
+  - ShopExtensions\CheckoutPageControllerExtension
+SilverShop\Cart\ShoppingCartController:
+  extensions:
+  - ShopExtensions\ShoppingCartControllerExtension
+SilverShop\Model\Address:
+  extensions:
+  - ShopExtensions\AddressExtension
+SilverStripe\Omnipay\Service\PurchaseService:
+  extensions:
+  - ShopExtensions\ExtendedPurchaseService
+SilverShop\Model\OrderItem:
+  extensions:
+  - ShopExtensions\OrderItemExtension
+SilverShop\Page\ProductController:
+  extensions:
+  - ShopExtensions\ProductControllerExtension
+Silverstripe\SiteConfig\SiteConfig:
+  extensions:
+  - ShopExtensions\SiteConfigExtension
