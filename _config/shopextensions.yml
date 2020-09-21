@@ -1,5 +1,6 @@
 ---
 Name: shopextensions
+After: silvershop/config#shopconfig
 ---
 SilverStripe\Core\Injector\Injector:
   SilverShop\Checkout\OrderEmailNotifier:
