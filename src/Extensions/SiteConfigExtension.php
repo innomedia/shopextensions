@@ -38,12 +38,12 @@ class SiteConfigExtension extends DataExtension
     {
         $fields->addFieldToTab('Root.Produkte', TextareaField::create('CostHint', 'Hinweis bei Preis'));
 
-        $fields->addFieldToTab('Root.Bestellabschluss.Rechnung', TextField::create('ReceiptHeader', 'Adresszeile Absender'));
-        $fields->addFieldToTab('Root.Bestellabschluss.Rechnung', HTMLEditorField::create('ReceiptFooter', 'Fußzeile'));
-        $fields->addFieldToTab('Root.Bestellabschluss.Rechnung', UploadField::create('ReceiptLogo', 'Logo'));
+        $fields->addFieldToTab('Root.Bestellabschluss', TextField::create('ReceiptHeader', 'Adresszeile Absender'));
+        $fields->addFieldToTab('Root.Bestellabschluss', HTMLEditorField::create('ReceiptFooter', 'Fußzeile'));
+        $fields->addFieldToTab('Root.Bestellabschluss', UploadField::create('ReceiptLogo', 'Logo'));
 
-        $fields->addFieldToTab('Root.Bestellabschluss.Payment', HTMLEditorField::create('HintPayment', 'Hinweis Payment'));
-        $fields->addFieldToTab('Root.Bestellabschluss.Payment', HTMLEditorField::create('HintAfterPayment', 'Hinweis nach Bestellabschluss'));
+        $fields->addFieldToTab('Root.Bestellabschluss', HTMLEditorField::create('HintPayment', 'Hinweis Payment'));
+        $fields->addFieldToTab('Root.Bestellabschluss', HTMLEditorField::create('HintAfterPayment', 'Hinweis nach Bestellabschluss'));
 
         return $fields;
     }
