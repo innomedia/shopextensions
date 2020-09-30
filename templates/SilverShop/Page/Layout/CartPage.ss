@@ -1,5 +1,5 @@
 <% require css("silvershop/core: client/dist/css/cart.css") %>
-<% require css("shopextensions/css/cart.css") %>
+<% require css("innomedia/shopextensions: css/cart.css") %>
 
 <div class="container-fluid py-3 py-md-5">
     <div class="row">
