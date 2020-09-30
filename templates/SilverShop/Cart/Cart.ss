@@ -1,4 +1,4 @@
-<% require css("shopextensions/css/cart.css") %>
+<% require css("innomedia/shopextensions: css/cart.css") %>
 
 <% if $Items %>
     <% loop $Items %>

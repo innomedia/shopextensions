@@ -10,7 +10,7 @@ class AddressExtension extends DataExtension{
     public function updateCountryField(DropdownField $field){
         $source = $field->getSource();
         foreach ($source as $key => $value) {
-            $source[$key] = Locale::getDisplayRegion('-'.$key, 'de_DE');
+            $source[$key] = \Locale::getDisplayRegion('-'.$key, 'de_DE');
         }
 
         $field->setSource($source)->setEmptyString('Land auswählen');
