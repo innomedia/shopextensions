@@ -210,7 +210,6 @@ class OrderExtension extends DataExtension{
                 'Order' => $this->owner,
                 'BasePath' => Director::baseFolder(),
             ])->renderWith('Receipt');
-            die($content);
 
             $dompdf = new Dompdf();
             $dompdf->loadHtml($content);
