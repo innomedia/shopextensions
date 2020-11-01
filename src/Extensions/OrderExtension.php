@@ -17,6 +17,7 @@ use SilverShop\Checkout\OrderEmailNotifier;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\HTMLEditor\HTMLEditorField;
 use SilverStripe\AssetAdmin\Forms\UploadField;
+use SilverStripe\Core\Config\Config;
 
 class OrderExtension extends DataExtension{
     private static $db = [
@@ -36,15 +37,15 @@ class OrderExtension extends DataExtension{
         'Attachments' => File::class,
     ];
 
-   /* public function onPaid(){
+    /* public function onPaid(){
 
-        if (isset($_SESSION['campaign'])){
-            $campaignOrder = CampaignOrder::create();
-            $campaignOrder->Order = $this->owner->ID;
-            $campaignOrder->Campaign = $_SESSION['campaign'];
-            $campaignOrder->write();
-        }
-    }*/
+         if (isset($_SESSION['campaign'])){
+             $campaignOrder = CampaignOrder::create();
+             $campaignOrder->Order = $this->owner->ID;
+             $campaignOrder->Campaign = $_SESSION['campaign'];
+             $campaignOrder->write();
+         }
+     }*/
 
     public function updateCMSFields(FieldList $fields)
     {
@@ -168,7 +169,7 @@ class OrderExtension extends DataExtension{
     }
 
     public function ReferencePrefix(){
-       return 'RE-OS-';
+        return 'RE-OS-';
     }
 
     public function InvoiceNumber()
@@ -204,11 +205,12 @@ class OrderExtension extends DataExtension{
         if ($this->owner->canView()) {
             $siteconfig = SiteConfig::current_site_config();
 
-            \SilverStripe\View\SSViewer::set_themes(['zhenobia']);
+            \SilverStripe\View\SSViewer::set_themes(Config::inst()->get('SilverStripe\View\SSViewer', 'themes'));
             $content = $controller->customise([
                 'Order' => $this->owner,
                 'BasePath' => Director::baseFolder(),
             ])->renderWith('Receipt');
+            die($content);
 
             $dompdf = new Dompdf();
             $dompdf->loadHtml($content);
