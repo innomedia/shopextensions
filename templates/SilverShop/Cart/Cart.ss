@@ -79,7 +79,7 @@
                             <% if $Link %>
                                 <a href="$Link" title="<%t SilverShop\Generic.ReadMoreTitle "Click here to read more on &quot;{Title}&quot;" Title=$TableTitle %>">$TableTitle</a>
                             <% else %>
-                                <% if not Custom %>$TableTitle<% else %>$TableTitle.RAW<% end_if %>
+                                $TableTitle.RAW
                             <% end_if %>
                         </div>
                         <div class="col-auto text-right">
