@@ -45,4 +45,25 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier{
 
         return $email;
     }
+
+    public function sendAdminNotification()
+    {
+        $subject = _t(
+            'SilverShop\ShopEmail.AdminNotificationSubject',
+            'Order #{OrderNo} notification',
+            '',
+            array('OrderNo' => $this->order->Reference)
+        );
+
+        $filename = 'Lieferschein '.$this->order->InvoiceNumber().'.pdf';
+
+        $email = $this->buildEmail('SilverShop/Model/Order_AdminNotificationEmail', $subject)
+            ->setTo(Email::config()->admin_email)
+            ->addAttachmentFromData($this->order->PDFDeliverySlip('binary'), $filename, 'application/pdf');;
+        if ($this->debugMode) {
+            return $this->debug($email);
+        } else {
+            return $email->send();
+        }
+    }
 }

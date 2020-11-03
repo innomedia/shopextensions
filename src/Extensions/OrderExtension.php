@@ -147,7 +147,7 @@ class OrderExtension extends DataExtension{
             //all payment is settled
             $this->onPaid();
 
-            $notifier = OrderEmailNotifier::create($this->owner);
+            $notifier = CustomOrderEmailNotifier::create($this->owner);
             $notifier->sendAdminNotification();
         }
     }
@@ -246,7 +246,6 @@ class OrderExtension extends DataExtension{
                 'Order' => $this->owner,
                 'BasePath' => Director::baseFolder(),
             ])->renderWith('DeliverySlip');
-            die($content);
 
             $dompdf = new Dompdf();
             $dompdf->loadHtml($content);
