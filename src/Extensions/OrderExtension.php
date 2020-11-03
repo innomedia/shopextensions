@@ -49,8 +49,10 @@ class OrderExtension extends DataExtension{
 
     public function updateCMSFields(FieldList $fields)
     {
-        $link = "/OrderReceipt/StreamReceipt/" . $this->owner->ID;
-        $fields->addFieldToTab("Root.Rechnungen",LiteralField::create("Download", "<a class='btn btn-primary' href='" . $link . "'>Rechnung herunterladen</a>"));
+        $receiptLink = "/OrderReceipt/StreamReceipt/" . $this->owner->ID;
+        $deliverySlipLink = "/OrderReceipt/StreamDeliverySlip/" . $this->owner->ID;
+        $fields->addFieldToTab("Root.Rechnungen",LiteralField::create("DownloadReceipt", "<a class='btn btn-primary' href='" . $receiptLink . "'>Rechnung herunterladen</a>"));
+        $fields->addFieldToTab("Root.Rechnungen",LiteralField::create("DownloadDeliverySlip", "<a class='btn btn-primary' href='" . $deliverySlipLink . "'>Lieferschein herunterladen</a>"));
 
         $fields->addFieldToTab('Root.Kundeninfos', HTMLEditorField::create('Hints', 'Hinweise für den Kunden')->setDescription('Wird im Kundenkonto für die Bestellung angezeigt'));
         $fields->addFieldToTab('Root.Kundeninfos', UploadField::create('Attachments', 'Dokumente für den Kunden')->setDescription('Wird im Kundenkonto für die Bestellung angezeigt'));
@@ -221,24 +223,6 @@ class OrderExtension extends DataExtension{
             // Render the HTML as PDF
             $dompdf->render();
 
-            // Create File, Assign Data and add to Order
-            /*
-            $folder = Folder::find_or_make('Rechnungen');
-            if ($folder->ParentID != 0 || !$folder->exists()) {
-                $folder->ParentID = 0;
-                $folder->write();
-            }
-
-            $invoiceprefix = "";
-            $filename = '_' . $this->owner->Reference . '__' . date("Y-m-d_H-i-s") . '.pdf';
-            $file = new File();
-            $file->setFromString($dompdf->output(), 'Rechnungen/' . $filename);
-            $file->ParentID = $folder->ID;
-            $file->write();
-
-            $this->owner->Receipts()->add($file);
-            */
-
             // Output the generated PDF to Browser
             if ($type_ == 'stream') {
                 $dompdf->stream('Rechnung ' . $this->owner->Reference);
@@ -250,6 +234,40 @@ class OrderExtension extends DataExtension{
         }
     }
 
+    public function PDFDeliverySlip($type_ = 'stream')
+    {
+        $controller = \SilverStripe\CMS\Controllers\ContentController::create();
+
+        if ($this->owner->canView()) {
+            $siteconfig = SiteConfig::current_site_config();
+
+            \SilverStripe\View\SSViewer::set_themes(Config::inst()->get('SilverStripe\View\SSViewer', 'themes'));
+            $content = $controller->customise([
+                'Order' => $this->owner,
+                'BasePath' => Director::baseFolder(),
+            ])->renderWith('DeliverySlip');
+            die($content);
+
+            $dompdf = new Dompdf();
+            $dompdf->loadHtml($content);
+
+
+            // (Optional) Setup the paper size and orientation
+            $dompdf->setPaper('A4', 'portrait');
+
+            // Render the HTML as PDF
+            $dompdf->render();
+
+            // Output the generated PDF to Browser
+            if ($type_ == 'stream') {
+                $dompdf->stream('Lieferschein ' . $this->owner->Reference);
+            } else {
+                return $dompdf->output();
+            }
+        } else {
+            return;
+        }
+    }
 
     public function getDescription()
     {
