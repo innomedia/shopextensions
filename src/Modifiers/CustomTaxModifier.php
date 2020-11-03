@@ -44,16 +44,34 @@ class CustomTaxModifier extends Base
 
     public function TableTitle()
     {
-        $html = "Enthaltene MwSt. zu 16%";
+        $html = "";
+        foreach($this->getTaxRates() as $tax)
+        {
+            $html .= "Enthaltene MwSt. zu ".$tax."%<br/>";
+        }
+        $html = substr($html,0,strlen($html) - 5);
         return $html;
     }
 
     public function CustomTableValue()
     {
-        $html = "€";
-        $html .= $this->getProductTaxTotalByTaxRate(16);
-        //$html = substr($html,0,strlen($html) - 5);
+        $html = "";
+        foreach($this->getTaxRates() as $tax)
+        {
+            $html .= '€'.$this->getProductTaxTotalByTaxRate($tax)."<br/>";
+        }
+        $html = substr($html,0,strlen($html) - 5);
         return $html;
+    }
+
+    public function TotalTaxAmount(){
+        $total = 0;
+        foreach($this->getTaxRates() as $tax)
+        {
+            //debug::dump($this->getProductTaxTotalByTaxRate($tax));
+            $total += floatval(str_replace(',', '.', $this->getProductTaxTotalByTaxRate($tax)));
+        }
+        return $total;
     }
 
     public function ShowInTable()
@@ -72,23 +90,23 @@ class CustomTaxModifier extends Base
                 array_push($tax,$item->Product()->Tax);
             }
         }
+
         return $tax;
     }
     private function getProductTaxTotalByTaxRate($taxrate)
     {
         $order = $this->Order();
-
-        /*
         $PriceTotal = 0;
         foreach($order->Items() as $item)
         {
-            $PriceTotal += $item->Total();
+            if($item->Product()->Tax == $taxrate)
+            {
+                $PriceTotal += $item->Total() ;
+            }
         }
-        */
-        $PriceTotal = $order->SubTotal();
-        //$PriceTotal += SilverShop\Model\Modifiers\Shipping\Simple::config()->default_charge;
 
         $netprice = $PriceTotal - ($PriceTotal / ($taxrate / 100 + 1));
+
 
         return number_format(round($netprice, 2),2,",","");
     }
