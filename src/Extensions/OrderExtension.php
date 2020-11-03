@@ -162,7 +162,7 @@ class OrderExtension extends DataExtension{
     }
 
     public function ReferencePrefix(){
-        return 'RE-OS-';
+        return 'RE';
     }
 
     public function InvoiceNumber()
