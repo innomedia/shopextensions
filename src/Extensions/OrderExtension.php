@@ -28,13 +28,7 @@ class OrderExtension extends DataExtension{
         'InvoicePrefix' => 'Text',
         'InvoiceDate' => 'Date',
         'ReferencePrefix' => 'Text',
-        'Hints' => 'HTMLText',
         'Newsletter' => 'Boolean(0)'
-    ];
-
-
-    private static $many_many = [
-        'Attachments' => File::class,
     ];
 
     /* public function onPaid(){
@@ -53,9 +47,6 @@ class OrderExtension extends DataExtension{
         $deliverySlipLink = "/OrderReceipt/StreamDeliverySlip/" . $this->owner->ID;
         $fields->addFieldToTab("Root.Rechnungen",LiteralField::create("DownloadReceipt", "<a class='btn btn-primary' href='" . $receiptLink . "'>Rechnung herunterladen</a>"));
         $fields->addFieldToTab("Root.Rechnungen",LiteralField::create("DownloadDeliverySlip", "<a class='btn btn-primary' href='" . $deliverySlipLink . "'>Lieferschein herunterladen</a>"));
-
-        $fields->addFieldToTab('Root.Kundeninfos', HTMLEditorField::create('Hints', 'Hinweise für den Kunden')->setDescription('Wird im Kundenkonto für die Bestellung angezeigt'));
-        $fields->addFieldToTab('Root.Kundeninfos', UploadField::create('Attachments', 'Dokumente für den Kunden')->setDescription('Wird im Kundenkonto für die Bestellung angezeigt'));
     }
 
     public function canPay(){
