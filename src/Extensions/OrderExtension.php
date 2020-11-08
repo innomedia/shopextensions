@@ -1,4 +1,6 @@
 <?php
+namespace ShopExtensions;
+
 use SilverStripe\Control\Controller;
 use SilverStripe\Forms\LiteralField;
 use SilverShop\Model\Order;
