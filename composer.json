@@ -2,7 +2,6 @@
   "name":"innomedia/shopextensions",
   "description": "Silverstripe 4 Basic Shop Extensions",
   "license": "BSD-3-Clause",
-  "version": "0.1",
   "authors": [
     {
       "name":"innomedia AG",
