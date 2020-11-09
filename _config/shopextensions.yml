@@ -13,6 +13,7 @@ SilverShop\Page\AccountPageController:
 SilverShop\Page\CheckoutPageController:
   extensions:
   - ShopExtensions\CheckoutPageControllerExtension
+    - SilverShop\Discounts\Checkout\Extensions\CouponFormCheckoutDecorator
 SilverShop\Cart\ShoppingCartController:
   extensions:
   - ShopExtensions\ShoppingCartControllerExtension
