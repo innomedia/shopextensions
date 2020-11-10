@@ -1,5 +1,7 @@
 <?php
 
+namespace ShopExtensions;
+
 use SilverShop\Model\Order;
 use SilverStripe\Dev\Debug;
 use SilverShop\Page\CheckoutPage;
