@@ -4,7 +4,7 @@ After: silvershop/config#shopconfig
 ---
 SilverStripe\Core\Injector\Injector:
   SilverShop\Checkout\OrderEmailNotifier:
-    class: CustomOrderEmailNotifier
+    class: ShopExtensions\CustomOrderEmailNotifier
 SilverStripe\ORM\FieldType\DBCurrency:
   currency_symbol: '€'
 SilverShop\Page\AccountPageController:
