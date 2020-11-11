@@ -17,7 +17,7 @@
                 <% end_if %>
                 </strong>
             </td>
-            <td class="text-right text-nowrap pl-2">$TableValue</td>
+            <td class="text-right text-nowrap pl-2"><% if not Custom %>$TableValue.Nice<% else %>$CustomTableValue.RAW<% end_if %></td>
         </tr>
         <% end_if %>
     <% end_loop %>
