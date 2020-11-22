@@ -44,9 +44,11 @@ class ExtendedPurchaseService extends Extension
             $data['paymentType'] = $_SESSION['custompaymentmethod'];
         }
 
-        if(Locale::getCurrentLocale()->Locale){
-            $data['language'] = substr(Locale::getCurrentLocale()->Locale,0,2);
+        if(class_exists('TractorCow\Fluent\Model\Locale')){
+            if(Locale::getCurrentLocale()->Locale){
+                $data['language'] = substr(Locale::getCurrentLocale()->Locale,0,2);
 
+            }
         }
     }
 }
