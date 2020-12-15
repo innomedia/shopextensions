@@ -43,24 +43,6 @@
 <% end_if %>
 <p><a href="javascript:history.back()" class="btn btn-primary">Zurück</a></p>
 
-<% if $Status != 'MemberCancelled' %>
-    <% if canCancel %>
-        <div class="typography pt-50">
-            <h2><%t Order.CANCELATION 'Stornieren' %></h2>
-            <p><%t Order.CANCANCEL 'Sie können diese Bestellung bis zu 24h nach Aufgabe stornieren.' %></p>
-        </div>
-    <% else %>
-        <div class="typography pt-50">
-            <% if $Payments.Last.GatewayTitle != 'Stripe' %>
-                <h2><%t Order.CANCELATION 'Storniergen' %></h2>
-                <p><%t Order.CANTCANCEL 'Leider können Sie diese Bestellung nicht mehr stornieren. Die Stornierung ist nur bis zu 24h nach Aufgabe möglich.' %></p>
-            <% else %>
-                <h2><%t Order.CANCELATION 'Storniergen' %></h2>
-                <p><%t Order.CANTCANCELSTRIPE 'Leider können Sie diese Bestellung nicht mehr online stornieren. Bitte schreiben Sie uns an info@nussbaum-group.de' %></p>
-            <% end_if %>
-        </div>
-    <% end_if %>
-<% end_if %>
 
 <%-- if $HasBeenPlaced %>
     <script>
