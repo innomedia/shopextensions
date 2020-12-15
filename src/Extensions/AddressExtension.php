@@ -25,5 +25,7 @@ class AddressExtension extends DataExtension{
 
     public function updateFormFields(\SilverStripe\Forms\FieldList $fields){
         $fields->insertBefore('Address', TextField::create('Company', $this->owner->fieldLabel('Company')));
+        $fields->insertBefore('Address', TextField::create('FirstName', $this->owner->fieldLabel('FirstName')));
+        $fields->insertBefore('Address', TextField::create('Surname', $this->owner->fieldLabel('Surname')));
     }
 }
