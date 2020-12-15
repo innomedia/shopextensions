@@ -91,3 +91,5 @@ de:
     Amount: 'Betrag'
   ProductsDiscountConstraint:
     MISSINGPRODUCT: "Sie haben nicht die nötigen Produkte im Warenkorb"
+  SilverStripe\Control\ChangePasswordEmail_ss:
+    Hello: 'Hallo'
