@@ -5,6 +5,7 @@ namespace ShopExtensions;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\Forms\FieldList;
+use SilverStripe\Forms\TextField;
 
 class AddressExtension extends DataExtension{
     public function updateCountryField(DropdownField $field){
@@ -20,5 +21,9 @@ class AddressExtension extends DataExtension{
         if($session->get('cartbillingcountry')){
             $field->setValue($session->get('cartbillingcountry'));
         }
+    }
+
+    public function updateFormFields(\SilverStripe\Forms\FieldList $fields){
+        $fields->insertBefore('Address', TextField::create('Company', $this->owner->fieldLabel('Company')));
     }
 }
