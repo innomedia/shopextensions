@@ -27,15 +27,23 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier{
         $filename = "";
         $subject = "";
 
-        $filename = 'Rechnung '.$this->order->InvoiceNumber().'.pdf';
-        $subject = 'Rechnung '.$this->order->InvoiceNumber();
+        if($this->order->InvoiceNumber()){
+            $filename = 'Rechnung '.$this->order->InvoiceNumber().'.pdf';
+            $subject = 'Rechnung '.$this->order->InvoiceNumber();
 
-        $email = Email::create()
-            ->setHTMLTemplate($template)
-            ->setFrom($from)
-            ->setTo($to)
-            ->setSubject($subject)
-            ->addAttachmentFromData($this->order->PDFReceipt('binary'), $filename, 'application/pdf');
+            $email = Email::create()
+                ->setHTMLTemplate($template)
+                ->setFrom($from)
+                ->setTo($to)
+                ->setSubject($subject)
+                ->addAttachmentFromData($this->order->PDFReceipt('binary'), $filename, 'application/pdf');
+        } else {
+            $subject = "Bestellung Nr. ".$this->order->getReference();$email = Email::create()
+                ->setHTMLTemplate($template)
+                ->setFrom($from)
+                ->setTo($to)
+                ->setSubject($subject);
+        }
 
         $email->setData(
             [
