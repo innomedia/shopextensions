@@ -50,5 +50,8 @@ class ExtendedPurchaseService extends Extension
 
             }
         }
+
+        // Fix reserved params in repayment
+        unset($data['PaymentMethod']);
     }
 }
