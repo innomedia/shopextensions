@@ -32,3 +32,6 @@ SilverShop\Page\ProductController:
 Silverstripe\SiteConfig\SiteConfig:
   extensions:
   - ShopExtensions\SiteConfigExtension
+PageController:
+  extensions:
+    - ShopExtensions\PageControllerExtension
