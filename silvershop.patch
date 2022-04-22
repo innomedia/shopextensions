@@ -1,0 +1,13 @@
+diff --git a/src/Checkout/Component/Address.php b/src/Checkout/Component/Address.php
+index 5b9bb643..7f0909b2 100644
+--- a/src/Checkout/Component/Address.php
++++ b/src/Checkout/Component/Address.php
+@@ -26,7 +26,7 @@ abstract class Address extends CheckoutComponent
+         $fields = $this->getAddress($order)->getFrontEndFields([
+             'addfielddescriptions' => $this->formfielddescriptions
+         ]);
+-
++        return $fields;
+         $label = _t(
+             "SilverShop\Model\Address.{$this->addresstype}Address",
+             "{$this->addresstype} Address"
