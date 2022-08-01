@@ -27,7 +27,8 @@ class SiteConfigExtension extends DataExtension
         'HintPayment' => 'HTMLText',
         'HintAfterPayment' => 'HTMLText',
         'ReceiptHeader' => 'HTMLText',
-        'ReceiptFooter' => 'HTMLText'
+        'ReceiptFooter' => 'HTMLText',
+        'AdminNotificationMail' => 'Text',
     ];
 
     private static $has_one = [
@@ -37,6 +38,9 @@ class SiteConfigExtension extends DataExtension
     public function updateCMSFields(FieldList $fields)
     {
         $fields->addFieldToTab('Root.Produkte', TextareaField::create('CostHint', 'Hinweis bei Preis'));
+
+        $fields->addFieldToTab('Root.Bestellabschluss', TextField::create('AdminNotificationMail', 'Admin Benachrichtigungsmail')
+            ->setDescription('An diese E-Mail Adresse wird eine Benachrichtigung gesendet, sobald eine Bestellung getätigt wurde.'));
 
         $fields->addFieldToTab('Root.Bestellabschluss', TextField::create('ReceiptHeader', 'Adresszeile Absender'));
         $fields->addFieldToTab('Root.Bestellabschluss', HTMLEditorField::create('ReceiptFooter', 'Fußzeile'));
