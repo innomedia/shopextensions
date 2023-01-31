@@ -57,7 +57,16 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier{
 
         return $email;
     }
-
+    public function sendStatusChange($title, $note = null)
+    {
+        //if opting out of status changes
+        if(!Config::inst()->get(OrderProcessor::class, 'send_statuschanges'))
+        {
+            return true;
+        }
+        //default shop behavios
+        return parent::sendStatusChange($title,$note);
+    }
     public function sendAdminNotification()
     {
         $subject = _t(
