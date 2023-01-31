@@ -2,6 +2,9 @@
 Name: shopextensions
 After: silvershop/config#shopconfig
 ---
+
+#SilverShop\Checkout\OrderProcessor:
+#  send_statuschanges: false #to disable sending status changes
 #SilverStripe\Core\Injector\Injector:
 #  SilverShop\Checkout\OrderEmailNotifier:
 #    class: ShopExtensions\CustomOrderEmailNotifier
