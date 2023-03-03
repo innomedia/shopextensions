@@ -10,7 +10,7 @@
   ],
   "require": {
     "silverstripe/framework": "^4",
-    "dompdf/dompdf": "^1.0.2",
+    "dompdf/dompdf": "^2",
     "silvershop/core": "^3.0"
   },
   "autoload": {
