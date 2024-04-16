@@ -11,6 +11,7 @@ use SilverShop\Checkout\OrderEmailNotifier;
 use SilverShop\Extension\ShopConfigExtension;
 use SilverShop\Model\OrderStatusLog;
 use SilverStripe\SiteConfig\SiteConfig;
+use SilverStripe\Core\Config\Config;
 
 class CustomOrderEmailNotifier extends OrderEmailNotifier{
     public $receipt = null;
