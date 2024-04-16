@@ -2,7 +2,8 @@
 Name: shopextensions
 After: silvershop/config#shopconfig
 ---
-
+ShopConfig:
+  sendReceipt: true
 #SilverShop\Checkout\OrderProcessor:
 #  send_statuschanges: false #to disable sending status changes
 #SilverStripe\Core\Injector\Injector:
