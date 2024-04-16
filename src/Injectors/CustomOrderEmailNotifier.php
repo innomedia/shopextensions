@@ -98,8 +98,10 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier{
             ->setHTMLTemplate('SilverShop/Model/Order_AdminNotificationEmail')
             ->setFrom(ShopConfigExtension::config()->email_from ? ShopConfigExtension::config()->email_from : Email::config()->admin_email)
             ->setTo($to)
-            ->setSubject($subject)
-            ->addAttachmentFromData($this->order->PDFReceipt('binary'), $filename, 'application/pdf');
+            ->setSubject($subject);
+        if(Config::inst()->get('ShopConfig', 'sendReceipt') != false){
+                $email->addAttachmentFromData($this->order->PDFReceipt('binary'), $filename, 'application/pdf');
+            }
         $checkoutpage = CheckoutPage::get()->first();
         $email->setData(
             [
