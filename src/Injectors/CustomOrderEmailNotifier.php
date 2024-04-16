@@ -36,8 +36,10 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier{
                 ->setHTMLTemplate($template)
                 ->setFrom($from)
                 ->setTo($to)
-                ->setSubject($subject)
-                ->addAttachmentFromData($this->order->PDFReceipt('binary'), $filename, 'application/pdf');
+                ->setSubject($subject);
+            if(Config::inst()->get('ShopConfig', 'sendReceipt') != false){
+                $email->addAttachmentFromData($this->order->PDFReceipt('binary'), $filename, 'application/pdf');
+            }
         } else {
 //            $subject = "Bestellung Nr. ".$this->order->getReference();
             $email = Email::create()
