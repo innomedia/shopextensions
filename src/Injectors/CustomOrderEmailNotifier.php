@@ -60,7 +60,7 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier{
 
         return $email;
     }
-    public function sendStatusChange($title = null, $note = null)
+    public function sendStatusChange($title, $note = null): bool|string
     {
         //if opting out of status changes
         if(!Config::inst()->get(OrderProcessor::class, 'send_statuschanges'))
@@ -70,7 +70,7 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier{
         //default shop behavios
         return parent::sendStatusChange($title,$note);
     }
-    public function sendAdminNotification()
+    public function sendAdminNotification(): bool|string
     {
         $subject = _t(
             'SilverShop\ShopEmail.AdminNotificationSubject',
