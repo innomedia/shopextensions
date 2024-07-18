@@ -1,6 +1,6 @@
 {
   "name":"innomedia/shopextensions",
-  "description": "Silverstripe 4 Basic Shop Extensions",
+  "description": "Silverstripe 5 Basic Shop Extensions",
   "license": "BSD-3-Clause",
   "authors": [
     {
@@ -9,9 +9,9 @@
     }
   ],
   "require": {
-    "silverstripe/framework": "^4",
-    "dompdf/dompdf": "^2",
-    "silvershop/core": "^3.0"
+    "silverstripe/framework": "^5",
+    "dompdf/dompdf": "^3",
+    "silvershop/core": "^4"
   },
   "autoload": {
     "psr-4": {
