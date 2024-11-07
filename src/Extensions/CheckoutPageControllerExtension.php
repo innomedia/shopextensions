@@ -2,6 +2,7 @@
 
 namespace ShopExtensions;
 
+use SilverStripe\Forms\FieldList;
 use SilverStripe\Core\Extension;
 use SilverStripe\Dev\Debug;
 use SilverStripe\Forms\Form;
@@ -13,8 +14,23 @@ use SilverStripe\Forms\CheckboxField;
 
 class CheckoutPageControllerExtension extends Extension{
     public function updateOrderForm(PaymentForm $form){
-        $form->setTemplate('ExtendedCheckoutForm');
+        $updatedFields = new FieldList();
         $fields = $form->Fields();
-        $fields->insertBefore('ReadTermsAndConditions', CheckboxField::create('Newsletter', 'Ich möchte den Newsletter abbonnieren und einen Coupon geschenkt bekommen'));
+        foreach($fields as $field)
+        {
+            switch(get_class($field))
+            {
+                case "SilverStripe\Forms\CompositeField":
+                    foreach($field->getChildren() as $childfield)
+                    {
+                        $updatedFields->push($childfield);
+                    }
+                    break;
+                default:
+                    $updatedFields->push($field);
+                    break;
+            }
+        }
+        $form->setFields($updatedFields);
     }
 }
