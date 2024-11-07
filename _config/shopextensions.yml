@@ -18,9 +18,6 @@ SilverShop\Page\CheckoutPageController:
   extensions:
   - ShopExtensions\CheckoutPageControllerExtension
   - SilverShop\Discounts\Extensions\CouponFormCheckoutDecorator
-SilverShop\Cart\ShoppingCartController:
-  extensions:
-  - ShopExtensions\ShoppingCartControllerExtension
 SilverShop\Model\Address:
   extensions:
   - ShopExtensions\AddressExtension
