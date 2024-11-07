@@ -15,6 +15,6 @@ class CheckoutPageControllerExtension extends Extension{
     public function updateOrderForm(PaymentForm $form){
         $form->setTemplate('ExtendedCheckoutForm');
         $fields = $form->Fields();
-        $fields->insertBefore(CheckboxField::create('Newsletter', 'Ich möchte den Newsletter abbonnieren und einen Coupon geschenkt bekommen'), 'ReadTermsAndConditions');
+        $fields->insertBefore('ReadTermsAndConditions', CheckboxField::create('Newsletter', 'Ich möchte den Newsletter abbonnieren und einen Coupon geschenkt bekommen'));
     }
 }
