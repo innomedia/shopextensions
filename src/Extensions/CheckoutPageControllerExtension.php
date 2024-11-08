@@ -14,6 +14,7 @@ use SilverStripe\Forms\CheckboxField;
 
 class CheckoutPageControllerExtension extends Extension{
     public function updateOrderForm(PaymentForm $form){
+        $form->setTemplate('ExtendedCheckoutForm');
         $updatedFields = new FieldList();
         $fields = $form->Fields();
         foreach($fields as $field)
