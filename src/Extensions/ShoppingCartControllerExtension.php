@@ -27,7 +27,7 @@ class ShoppingCartControllerExtension extends Extension{
         }
     }
 
-    public function updateRemoveAllResponse($request, $response, $product, $quantity){
+    public function updateRemoveAllResponse($request, $response, $product){
         $this->owner->cart = ShoppingCart::singleton();
 
         if(Director::is_ajax()){
