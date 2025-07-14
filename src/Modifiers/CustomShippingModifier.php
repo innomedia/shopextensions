@@ -22,7 +22,7 @@ class CustomShippingModifier extends OrderModifier
         return $total;
     }
 
-    public function value($incoming)
+    public function value($incoming): int|float
     {
         $shipping = $this->individualShipping();
 
@@ -43,7 +43,7 @@ class CustomShippingModifier extends OrderModifier
         }
     }
 
-    public function getTableTitle()
+    public function getTableTitle(): string
     {
         $title = $this->i18n_singular_name();
 
