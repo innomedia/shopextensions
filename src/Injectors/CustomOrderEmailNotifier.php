@@ -16,7 +16,7 @@ use SilverStripe\Core\Config\Config;
 class CustomOrderEmailNotifier extends OrderEmailNotifier{
     public $receipt = null;
 
-    protected function buildEmail($template, $subject)
+    protected function buildEmail($template, $subject): SilverStripe\Control\Email\Email
     {
         $from = ShopConfigExtension::config()->email_from ? ShopConfigExtension::config()->email_from : Email::config()->admin_email;
         $to = $this->order->getLatestEmail();
