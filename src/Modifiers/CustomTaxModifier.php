@@ -23,7 +23,7 @@ class CustomTaxModifier extends Base
         return true;
     }
 
-    public function value($incoming)
+    public function value($incoming): int|float
     {
         return $incoming;
     }
@@ -74,7 +74,7 @@ class CustomTaxModifier extends Base
         return $total;
     }
 
-    public function ShowInTable()
+    public function ShowInTable(): bool
     {
         return true;
     }
