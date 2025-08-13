@@ -18,7 +18,7 @@ class PageControllerExtension extends DataExtension
 
     public function StreamReceipt()
     {
-        $ID = Convert::raw2sql($this->getRequest()->params()["ID"]);
+        $ID = Convert::raw2sql($this->owner->getRequest()->params()["ID"]);
         if ($ID != "" && $ID > 0) {
             $Order = Order::get()->byID($ID);
             i18n::set_locale($Order->Locale);
@@ -34,7 +34,7 @@ class PageControllerExtension extends DataExtension
 
     public function StreamDeliverySlip()
     {
-        $ID = Convert::raw2sql($this->getRequest()->params()["ID"]);
+        $ID = Convert::raw2sql($this->owner->getRequest()->params()["ID"]);
         if ($ID != "" && $ID > 0) {
             $Order = Order::get()->byID($ID);
             i18n::set_locale($Order->Locale);
