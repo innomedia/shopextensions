@@ -114,8 +114,13 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier{
 
         if ($this->debugMode) {
             return $this->debug($email);
-        } else {
-            return $email->send();
         }
+        try {
+            $email->send();
+        } catch (TransportExceptionInterface $e) {
+            $this->logger->error('OrderEmailNotifier.sendAdminNotification: error sending email in ' . __FILE__ . ' line ' . __LINE__ . ": {$e->getMessage()}");
+            return false;
+        }
+        return true;
     }
 }
