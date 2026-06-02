@@ -2,9 +2,10 @@
 
 namespace ShopExtensions;
 
-use SilverStripe\ORM\DataExtension;
+use SilverStripe\Core\Extension;
 
-class OrderItemExtension extends DataExtension{
+
+class OrderItemExtension extends Extension{
     public function PreparedProduct(){
         if($this->owner->ProductID){
             return \SilverShop\Page\Product::get()->byID($this->owner->ProductID);

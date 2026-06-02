@@ -4,12 +4,12 @@ namespace ShopExtensions;
 
 use SilverShop\Model\Order;
 use SilverStripe\Core\Convert;
+use SilverStripe\Core\Extension;
 use SilverStripe\i18n\i18n;
-use SilverStripe\ORM\DataExtension;
 
 
 
-class PageControllerExtension extends DataExtension
+class PageControllerExtension extends Extension
 {
     private static $allowed_actions = [
         'StreamReceipt' => true,

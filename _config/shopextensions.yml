@@ -11,6 +11,24 @@ ShopConfig:
 #    class: ShopExtensions\CustomOrderEmailNotifier
 SilverStripe\ORM\FieldType\DBCurrency:
   currency_symbol: '€'
+
+# Register Order extension
+SilverShop\Model\Order:
+  extensions:
+    - ShopExtensions\OrderExtension
+
+# Register Product extension for RequiresShipping logic
+SilverShop\Page\Product:
+  extensions:
+    - ShopExtensions\ProductExtension
+  # Default: physical products require shipping
+  requires_shipping: true
+
+# Example: Digital products/courses don't require shipping
+# Configure specific product classes to not require shipping:
+Course:
+  requires_shipping: false
+
 SilverShop\Page\AccountPageController:
   extensions:
   - ShopExtensions\AccountPageControllerExtension
@@ -39,3 +57,8 @@ Silverstripe\SiteConfig\SiteConfig:
 PageController:
   extensions:
     - ShopExtensions\PageControllerExtension
+
+# Use custom checkout component config
+SilverStripe\Core\Injector\Injector:
+  SilverShop\Checkout\CheckoutComponentConfig:
+    class: ShopExtensions\CustomCheckoutComponentConfig

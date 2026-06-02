@@ -2,25 +2,25 @@
 
 namespace ShopExtensions;
 
+use SilverStripe\AssetAdmin\Forms\UploadField;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Image;
-use SilverStripe\ORM\DataObject;
-use SilverStripe\Forms\FieldList;
-use SilverStripe\Forms\TextField;
-use SilverStripe\ORM\DataExtension;
 use SilverStripe\CMS\Model\SiteTree;
-use SilverStripe\Forms\LiteralField;
-use SilverStripe\Forms\CheckboxField;
-use SilverStripe\Forms\TextareaField;
-use SilverStripe\Forms\TreeDropdownField;
-use SilverStripe\Forms\GridField\GridField;
-use SilverStripe\AssetAdmin\Forms\UploadField;
-use SilverStripe\Forms\HTMLEditor\HTMLEditorField;
-use Symbiote\GridFieldExtensions\GridFieldOrderableRows;
-use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
+use SilverStripe\Core\Extension;
 use SilverStripe\FontAwesome\FontAwesomeField;
+use SilverStripe\Forms\CheckboxField;
+use SilverStripe\Forms\FieldList;
+use SilverStripe\Forms\GridField\GridField;
+use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
+use SilverStripe\Forms\HTMLEditor\HTMLEditorField;
+use SilverStripe\Forms\LiteralField;
+use SilverStripe\Forms\TextareaField;
+use SilverStripe\Forms\TextField;
+use SilverStripe\Forms\TreeDropdownField;
+use SilverStripe\ORM\DataObject;
+use Symbiote\GridFieldExtensions\GridFieldOrderableRows;
 
-class SiteConfigExtension extends DataExtension
+class SiteConfigExtension extends Extension
 {
     private static $db = [
         'CostHint' => 'Text',

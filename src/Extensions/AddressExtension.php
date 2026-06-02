@@ -2,12 +2,12 @@
 
 namespace ShopExtensions;
 
+use SilverStripe\Core\Extension;
 use SilverStripe\Forms\DropdownField;
-use SilverStripe\ORM\DataExtension;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\TextField;
 
-class AddressExtension extends DataExtension{
+class AddressExtension extends Extension{
     public function updateCountryField(DropdownField $field){
         $source = $field->getSource();
         foreach ($source as $key => $value) {

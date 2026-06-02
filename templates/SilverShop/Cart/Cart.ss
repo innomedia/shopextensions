@@ -13,11 +13,6 @@
                     </div>
                 <% end_if %>
                 <div class="col-12 col-xl-3 d-inline-block d-md-none order-2 order-md-1">
-                    <% if $Up.Editable %>
-                        <div class="d-inline-block">
-                            $QuantityField
-                        </div>
-                    <% end_if %>
 
                     <% if $Up.Editable %>
                         <div class="d-inline-block ml-4">

@@ -3,7 +3,6 @@ namespace ShopExtensions;
 
 use SilverStripe\Control\Session;
 use SilverShop\Model\Modifiers\OrderModifier;
-use SilverShop\Discounts\Model\Modifiers\OrderDiscountModifier;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Dev\Debug;
@@ -141,10 +140,5 @@ class CustomShippingModifier extends OrderModifier
 
 }
 
-class DiscountModifier extends OrderDiscountModifier
-{
-    private static $singular_name = "Rabatt";
-    private static $plural_name = "Rabatte";
-}
 
 

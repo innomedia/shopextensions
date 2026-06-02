@@ -1,27 +1,27 @@
 <?php
 namespace ShopExtensions;
 
-use SilverStripe\Control\Controller;
-use SilverStripe\Forms\LiteralField;
-use SilverShop\Model\Order;
-use SilverStripe\Core\Convert;
-use SilverStripe\ORM\DataExtension;
-use SilverStripe\Dev\Debug;
-use SilverStripe\SiteConfig\SiteConfig;
-use SilverStripe\Control\Director;
 use Dompdf\Dompdf;
-use SilverStripe\Assets\Folder;
-use SilverStripe\Assets\File;
-use SilverShop\Page\AccountPage;
-use SilverStripe\Omnipay\Model\Payment;
-use SilverStripe\ORM\FieldType\DBDatetime;
 use SilverShop\Checkout\OrderEmailNotifier;
+use SilverShop\Model\Order;
+use SilverShop\Page\AccountPage;
+use SilverStripe\AssetAdmin\Forms\UploadField;
+use SilverStripe\Assets\File;
+use SilverStripe\Assets\Folder;
+use SilverStripe\Control\Controller;
+use SilverStripe\Control\Director;
+use SilverStripe\Core\Config\Config;
+use SilverStripe\Core\Convert;
+use SilverStripe\Core\Extension;
+use SilverStripe\Dev\Debug;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\HTMLEditor\HTMLEditorField;
-use SilverStripe\AssetAdmin\Forms\UploadField;
-use SilverStripe\Core\Config\Config;
+use SilverStripe\Forms\LiteralField;
+use SilverStripe\Omnipay\Model\Payment;
+use SilverStripe\ORM\FieldType\DBDatetime;
+use SilverStripe\SiteConfig\SiteConfig;
 
-class OrderExtension extends DataExtension{
+class OrderExtension extends Extension{
     private static $db = [
         'BillingName' => 'Varchar',
         'VATNumber' => 'Varchar',
@@ -294,5 +294,28 @@ class OrderExtension extends DataExtension{
 
         return;
         */
+    }
+
+    /**
+     * Check if any items in this order require shipping
+     * @return bool
+     */
+    public function requiresShipping()
+    {
+        $items = $this->owner->Items();
+        
+        if (!$items || $items->count() === 0) {
+            // Default to true if no items yet (during initial checkout)
+            return true;
+        }
+
+        foreach ($items as $item) {
+            $product = $item->Product();
+            if ($product && $product->exists() && $product->requiresShipping()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
