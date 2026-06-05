@@ -4,11 +4,14 @@ After: silvershop/config#shopconfig
 ---
 ShopConfig:
   sendReceipt: true
-#SilverShop\Checkout\OrderProcessor:
-#  send_statuschanges: false #to disable sending status changes
-#SilverStripe\Core\Injector\Injector:
-#  SilverShop\Checkout\OrderEmailNotifier:
-#    class: ShopExtensions\CustomOrderEmailNotifier
+
+# Configure email sending behavior
+ShopExtensions\CustomOrderEmailNotifier:
+  # Set to false to send emails directly without queuing (for debugging)
+  use_queued_jobs: true
+  # Set to false to disable status change emails
+  send_statuschanges: true
+
 SilverStripe\ORM\FieldType\DBCurrency:
   currency_symbol: '€'
 
@@ -62,3 +65,6 @@ PageController:
 SilverStripe\Core\Injector\Injector:
   SilverShop\Checkout\CheckoutComponentConfig:
     class: ShopExtensions\CustomCheckoutComponentConfig
+  # Use custom order email notifier with queued job support
+  SilverShop\Checkout\OrderEmailNotifier:
+    class: ShopExtensions\CustomOrderEmailNotifier

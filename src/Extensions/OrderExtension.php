@@ -102,7 +102,7 @@ class OrderExtension extends Extension{
         }
         $this->owner->InvoiceDate = date('Y-m-d H:i:s');
 
-        if (!$this->owner->ReceiptSent) {
+        if (!$this->owner->ReceiptSent || true) {
             $notifier = CustomOrderEmailNotifier::create($this->owner)->sendReceipt();
             $this->owner->ReceiptSent = DBDatetime::now()->Rfc2822();
         }
@@ -129,7 +129,7 @@ class OrderExtension extends Extension{
             $this->owner->InvoiceDate = date('Y-m-d H:i:s');
         }
 
-        if ($toStatus == 'Paid' && in_array($payment->Gateway, ['Stripe', 'PayPal_Express', 'PayPal_Pro', 'Mollie'])  ) {
+        if ($toStatus == 'Paid' && in_array($payment->Gateway, ['Stripe', 'PayPal_Express', 'PayPal_Pro', 'Mollie','Manual'])  ) {
             $this->owner->Paid = DBDatetime::now()->Rfc2822();
             foreach ($this->owner->Items() as $item) {
                 $item->onPlacement();
