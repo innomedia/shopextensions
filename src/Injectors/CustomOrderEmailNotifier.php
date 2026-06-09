@@ -4,7 +4,6 @@ namespace ShopExtensions;
 
 use ShopExtensions\Jobs\SendOrderEmailJob;
 use SilverShop\Checkout\OrderEmailNotifier;
-use SilverShop\Extension\ShopConfigExtension;
 use SilverShop\Page\CheckoutPage;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\Email\Email;
@@ -131,11 +130,16 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
             $to = Email::config()->admin_email;
         }
 
+        $siteConfig = SiteConfig::current_site_config();
+        
         $email = Email::create()
             ->setHTMLTemplate('SilverShop/Model/Order_AdminNotificationEmail')
-            ->setFrom(ShopConfigExtension::config()->email_from ? ShopConfigExtension::config()->email_from : Email::config()->admin_email)
             ->setTo($to)
-            ->setSubject($subject);
+            ->setSubject($subject)
+            ->setFrom(
+                $siteConfig->AdminEmail ?: Email::config()->admin_email,
+                $siteConfig->AdminName ?: null
+            );
 
         if (Config::inst()->get('ShopConfig', 'sendReceipt') != false) {
             $email->addAttachmentFromData($this->order->PDFReceipt('binary'), $filename, 'application/pdf');
@@ -167,7 +171,7 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
      */
     protected function buildEmail($template, $subject): \SilverStripe\Control\Email\Email
     {
-        $from = ShopConfigExtension::config()->email_from ? ShopConfigExtension::config()->email_from : Email::config()->admin_email;
+        $siteConfig = SiteConfig::current_site_config();
         $to = $this->order->getLatestEmail();
         $checkoutpage = CheckoutPage::get()->first();
         $completemessage = $checkoutpage ? $checkoutpage->PurchaseComplete : '';
@@ -184,9 +188,12 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
 
             $email = Email::create()
                 ->setHTMLTemplate($template)
-                ->setFrom($from)
                 ->setTo($to)
-                ->setSubject($subject);
+                ->setSubject($subject)
+                ->setFrom(
+                    $siteConfig->AdminEmail ?: Email::config()->admin_email,
+                    $siteConfig->AdminName ?: null
+                );
             if(Config::inst()->get('ShopConfig', 'sendReceipt') != false){
                 $email->addAttachmentFromData($this->order->PDFReceipt('binary'), $filename, 'application/pdf');
             }
@@ -194,9 +201,12 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
 //            $subject = "Bestellung Nr. ".$this->order->getReference();
             $email = Email::create()
                 ->setHTMLTemplate($template)
-                ->setFrom($from)
                 ->setTo($to)
-                ->setSubject($subject);
+                ->setSubject($subject)
+                ->setFrom(
+                    $siteConfig->AdminEmail ?: Email::config()->admin_email,
+                    $siteConfig->AdminName ?: null
+                );
         }
 
         $email->setData(

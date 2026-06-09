@@ -57,6 +57,19 @@ SilverShop\Page\ProductController:
 Silverstripe\SiteConfig\SiteConfig:
   extensions:
   - ShopExtensions\SiteConfigExtension
+
+# Configure which SiteConfig fields to show in CMS
+# Default: all fields shown. Uncomment to customize:
+# ShopExtensions\SiteConfigExtension:
+#   enabled_fields:
+#     - AdminNotificationMail
+#     - ReceiptLogo
+#     - ReceiptHeader
+#     - ReceiptFooter
+#     - CostHint
+#     - HintPayment
+#     - HintAfterPayment
+
 PageController:
   extensions:
     - ShopExtensions\PageControllerExtension

@@ -3,7 +3,6 @@
 namespace ShopExtensions\Jobs;
 
 use Psr\Log\LoggerInterface;
-use SilverShop\Extension\ShopConfigExtension;
 use SilverShop\Model\Order;
 use SilverShop\Model\OrderStatusLog;
 use SilverShop\Page\CheckoutPage;
@@ -70,7 +69,6 @@ class SendOrderEmailJob extends AbstractQueuedJob
             $this->isComplete = true;
             return;
         }
-
         try {
             switch ($this->emailType) {
                 case 'confirmation':
@@ -156,12 +154,15 @@ class SendOrderEmailJob extends AbstractQueuedJob
         } else {
             $to = Email::config()->admin_email;
         }
-
+        $siteConfig = SiteConfig::current_site_config();
+        
         $email = Email::create()
             ->setHTMLTemplate('SilverShop/Model/Order_AdminNotificationEmail')
-            ->setFrom(ShopConfigExtension::config()->email_from ? ShopConfigExtension::config()->email_from : Email::config()->admin_email)
             ->setTo($to)
-            ->setSubject($subject);
+            ->setSubject($subject)
+            ->setFrom(
+                $siteConfig->AdminEmail
+            );
 
         if (Config::inst()->get('ShopConfig', 'sendReceipt') != false) {
             $email->addAttachmentFromData($order->PDFReceipt('binary'), $filename, 'application/pdf');
@@ -179,6 +180,8 @@ class SendOrderEmailJob extends AbstractQueuedJob
 
     protected function sendCancelNotification(Order $order): void
     {
+        $siteConfig = SiteConfig::current_site_config();
+        
         $email = Email::create()
             ->setSubject(_t(
                 'SilverShop\ShopEmail.CancelSubject',
@@ -186,11 +189,12 @@ class SendOrderEmailJob extends AbstractQueuedJob
                 '',
                 ['OrderNo' => $order->Reference]
             ))
-            ->setFrom(
-                ShopConfigExtension::config()->email_from ? ShopConfigExtension::config()->email_from : Email::config()->admin_email
-            )
             ->setTo(Email::config()->admin_email)
-            ->setBody($order->renderWith(Order::class));
+            ->setBody($order->renderWith(Order::class))
+            ->setFrom(
+                $siteConfig->AdminEmail ?: Email::config()->admin_email,
+                $siteConfig->AdminName ?: null
+            );
 
         $this->sendEmail($email, 'cancel_notification');
     }
@@ -217,17 +221,22 @@ class SendOrderEmailJob extends AbstractQueuedJob
         $adminThemeset = SSViewer::get_themes();
         SSViewer::set_themes(SSViewer::config()->uninherited('themes'));
 
-        $from = ShopConfigExtension::config()->email_from ? ShopConfigExtension::config()->email_from : Email::config()->admin_email;
+        $siteConfig = SiteConfig::current_site_config();
+        $fromEmail = $siteConfig->AdminEmail ?: Email::config()->admin_email;
+        
         $email = Email::create()
-            ->setFrom($from)
             ->setSubject(_t('SilverShop\ShopEmail.StatusChangeSubject', 'SilverShop – {Title}', ['Title' => $title]))
             ->setTo($order->getLatestEmail())
             ->setHTMLTemplate('SilverShop/Model/Order_StatusEmail')
             ->setData([
                 'Order' => $order,
                 'Note' => $note,
-                'FromEmail' => $from
-            ]);
+                'FromEmail' => $fromEmail
+            ])
+            ->setFrom(
+                $fromEmail,
+                $siteConfig->AdminName ?: null
+            );
 
         if (Config::inst()->get('SilverShop\Checkout\OrderEmailNotifier', 'bcc_status_change_to_admin')) {
             $email->setBCC(Email::config()->admin_email);
@@ -247,16 +256,19 @@ class SendOrderEmailJob extends AbstractQueuedJob
 
     protected function buildEmail(Order $order, string $template, string $subject): Email
     {
-        $from = ShopConfigExtension::config()->email_from ? ShopConfigExtension::config()->email_from : Email::config()->admin_email;
+        $siteConfig = SiteConfig::current_site_config();
         $to = $order->getLatestEmail();
         $checkoutpage = CheckoutPage::get()->first();
         $completemessage = $checkoutpage ? $checkoutpage->PurchaseComplete : '';
 
         $email = Email::create()
             ->setHTMLTemplate($template)
-            ->setFrom($from)
             ->setTo($to)
-            ->setSubject($subject);
+            ->setSubject($subject)
+            ->setFrom(
+                $siteConfig->AdminEmail ?: Email::config()->admin_email,
+                $siteConfig->AdminName ?: null
+            );
 
         // Add PDF attachment for invoiced orders
         if ($order->InvoiceNumber()) {

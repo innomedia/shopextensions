@@ -3,22 +3,12 @@
 namespace ShopExtensions;
 
 use SilverStripe\AssetAdmin\Forms\UploadField;
-use SilverStripe\Assets\File;
 use SilverStripe\Assets\Image;
-use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Core\Extension;
-use SilverStripe\FontAwesome\FontAwesomeField;
-use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\FieldList;
-use SilverStripe\Forms\GridField\GridField;
-use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
 use SilverStripe\Forms\HTMLEditor\HTMLEditorField;
-use SilverStripe\Forms\LiteralField;
 use SilverStripe\Forms\TextareaField;
 use SilverStripe\Forms\TextField;
-use SilverStripe\Forms\TreeDropdownField;
-use SilverStripe\ORM\DataObject;
-use Symbiote\GridFieldExtensions\GridFieldOrderableRows;
 
 class SiteConfigExtension extends Extension
 {
@@ -35,19 +25,53 @@ class SiteConfigExtension extends Extension
         'ReceiptLogo' => Image::class,
     ];
 
+    /**
+     * Configure which fields to show in CMS
+     * Set to empty array to hide all, or specify field names to show
+     * Default: all fields are shown
+     */
+    private static array $enabled_fields = [
+        'CostHint',
+        'AdminNotificationMail',
+        'ReceiptHeader',
+        'ReceiptFooter',
+        'ReceiptLogo',
+        'HintPayment',
+        'HintAfterPayment',
+    ];
+
     public function updateCMSFields(FieldList $fields)
     {
-        $fields->addFieldToTab('Root.Produkte', TextareaField::create('CostHint', 'Hinweis bei Preis'));
+        $enabledFields = $this->owner->config()->get('enabled_fields');
 
-        $fields->addFieldToTab('Root.Bestellabschluss', TextField::create('AdminNotificationMail', 'Admin Benachrichtigungsmail')
-            ->setDescription('An diese E-Mail Adresse wird eine Benachrichtigung gesendet, sobald eine Bestellung getätigt wurde.'));
+        if (in_array('CostHint', $enabledFields)) {
+            $fields->addFieldToTab('Root.Produkte', TextareaField::create('CostHint', 'Hinweis bei Preis'));
+        }
 
-        $fields->addFieldToTab('Root.Bestellabschluss', TextField::create('ReceiptHeader', 'Adresszeile Absender'));
-        $fields->addFieldToTab('Root.Bestellabschluss', HTMLEditorField::create('ReceiptFooter', 'Fußzeile'));
-        $fields->addFieldToTab('Root.Bestellabschluss', UploadField::create('ReceiptLogo', 'Logo'));
+        if (in_array('AdminNotificationMail', $enabledFields)) {
+            $fields->addFieldToTab('Root.Bestellabschluss', TextField::create('AdminNotificationMail', 'Admin Benachrichtigungsmail')
+                ->setDescription('An diese E-Mail Adresse wird eine Benachrichtigung gesendet, sobald eine Bestellung getätigt wurde.'));
+        }
 
-        $fields->addFieldToTab('Root.Bestellabschluss', HTMLEditorField::create('HintPayment', 'Hinweis Payment'));
-        $fields->addFieldToTab('Root.Bestellabschluss', HTMLEditorField::create('HintAfterPayment', 'Hinweis nach Bestellabschluss'));
+        if (in_array('ReceiptHeader', $enabledFields)) {
+            $fields->addFieldToTab('Root.Bestellabschluss', TextField::create('ReceiptHeader', 'Adresszeile Absender'));
+        }
+
+        if (in_array('ReceiptFooter', $enabledFields)) {
+            $fields->addFieldToTab('Root.Bestellabschluss', HTMLEditorField::create('ReceiptFooter', 'Fußzeile'));
+        }
+
+        if (in_array('ReceiptLogo', $enabledFields)) {
+            $fields->addFieldToTab('Root.Bestellabschluss', UploadField::create('ReceiptLogo', 'Logo'));
+        }
+
+        if (in_array('HintPayment', $enabledFields)) {
+            $fields->addFieldToTab('Root.Bestellabschluss', HTMLEditorField::create('HintPayment', 'Hinweis Payment'));
+        }
+
+        if (in_array('HintAfterPayment', $enabledFields)) {
+            $fields->addFieldToTab('Root.Bestellabschluss', HTMLEditorField::create('HintAfterPayment', 'Hinweis nach Bestellabschluss'));
+        }
 
         return $fields;
     }
