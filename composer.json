@@ -9,7 +9,6 @@
     }
   ],
   "require": {
-    "silverstripe/framework": "^5",
     "dompdf/dompdf": "^3",
     "silvershop/core": "^6",
     "symbiote/silverstripe-queuedjobs": "^6"
