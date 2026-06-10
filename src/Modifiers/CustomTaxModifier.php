@@ -11,6 +11,32 @@ class CustomTaxModifier extends Base
     private static $table_name = 'SilverShop_CustomTaxModifier';
 
     /**
+     * Tax calculation mode: 'inclusive' or 'exclusive'
+     *
+     * @config
+     * @var string
+     */
+    private static $tax_mode = 'inclusive';
+
+    /**
+     * Enable per-product tax rates
+     * If false, all products use the default_tax_rate
+     *
+     * @config
+     * @var bool
+     */
+    private static $per_product_tax = true;
+
+    /**
+     * Default/static tax rate (percentage)
+     * Used when per_product_tax is false, or as fallback
+     *
+     * @config
+     * @var float
+     */
+    private static $default_tax_rate = 19;
+
+    /**
      * Tax rates per country
      *
      * @config
@@ -30,10 +56,21 @@ class CustomTaxModifier extends Base
     public function modify($subtotal, $forcecalculation = false)
     {
         $order = $this->Order();
-        $value = ($order->IsCart() || $forcecalculation) ? $this->value($subtotal) : $this->Amount;
-
-        $value = round($value, Order::config()->rounding_precision);
-        $this->Amount = $value;
+        
+        // Calculate total tax amount
+        $taxAmount = 0;
+        foreach($this->getTaxRates() as $tax) {
+            $taxAmount += floatval(str_replace(',', '.', $this->getProductTaxTotalByTaxRate($tax)));
+        }
+        
+        $this->Amount = round($taxAmount, Order::config()->rounding_precision);
+        
+        // If tax mode is exclusive, add tax to subtotal
+        if ($this->config()->get('tax_mode') === 'exclusive') {
+            return $subtotal + $this->Amount;
+        }
+        Debug::dump($this->config()->get('tax_mode'));
+        // If inclusive, subtotal already contains tax
         return $subtotal;
     }
 
@@ -44,10 +81,13 @@ class CustomTaxModifier extends Base
 
     public function TableTitle()
     {
+        $taxMode = $this->config()->get('tax_mode');
+        $label = ($taxMode === 'exclusive') ? 'zzgl. MwSt. zu' : 'Enthaltene MwSt. zu';
+        
         $html = "";
         foreach($this->getTaxRates() as $tax)
         {
-            $html .= "Enthaltene MwSt. zu ".$tax."%<br/>";
+            $html .= $label." ".$tax."%<br/>";
         }
         $html = substr($html,0,strlen($html) - 5);
         return $html;
@@ -58,7 +98,7 @@ class CustomTaxModifier extends Base
         $html = "";
         foreach($this->getTaxRates() as $tax)
         {
-            $html .= '€'.$this->getProductTaxTotalByTaxRate($tax)."<br/>";
+            $html .= $this->getProductTaxTotalByTaxRate($tax).'€'."<br/>";
         }
         $html = substr($html,0,strlen($html) - 5);
         return $html;
@@ -82,33 +122,81 @@ class CustomTaxModifier extends Base
     private function getTaxRates()
     {
         $order = $this->Order();
+        $perProductTax = $this->config()->get('per_product_tax');
+        
+        // If per_product_tax is disabled, return static rate for all products
+        if (!$perProductTax) {
+            return [$this->config()->get('default_tax_rate')];
+        }
+        
+        // Collect unique tax rates from products
         $tax = [];
         foreach($order->Items() as $item)
         {
-            if(!in_array($item->Product()->Tax,$tax))
+            $taxRate = $this->getProductTaxRate($item->Product());
+            if (!in_array($taxRate, $tax))
             {
-                array_push($tax,$item->Product()->Tax);
+                array_push($tax, $taxRate);
             }
+        }
+        
+        if(count($tax) == 0)
+        {
+            $tax = [$this->config()->get('default_tax_rate')];
         }
 
         return $tax;
+    }
+    
+    /**
+     * Get the tax rate for a specific product
+     * 
+     * @param Product $product
+     * @return float
+     */
+    private function getProductTaxRate($product)
+    {
+        $perProductTax = $this->config()->get('per_product_tax');
+        $defaultRate = $this->config()->get('default_tax_rate');
+        
+        // If per_product_tax is disabled, always return default rate
+        if (!$perProductTax) {
+            return $defaultRate;
+        }
+        
+        // Use product-specific rate if set, otherwise default
+        if ($product->Tax !== null && $product->Tax > 0) {
+            return $product->Tax;
+        }
+        
+        return $defaultRate;
     }
     private function getProductTaxTotalByTaxRate($taxrate)
     {
         $order = $this->Order();
         $PriceTotal = 0;
+        
         foreach($order->Items() as $item)
         {
-            if($item->Product()->Tax == $taxrate)
+            $productTaxRate = $this->getProductTaxRate($item->Product());
+            if($productTaxRate == $taxrate)
             {
-                $PriceTotal += $item->Total() ;
+                $PriceTotal += $item->Total();
             }
         }
+        
+        Debug::Dump($PriceTotal);
+        $taxMode = $this->config()->get('tax_mode');
+        
+        if ($taxMode === 'exclusive') {
+            // Tax is added on top: tax = price * (rate / 100)
+            $taxAmount = $PriceTotal * ($taxrate / 100);
+        } else {
+            // Tax is included: extract tax from gross price
+            $taxAmount = $PriceTotal - ($PriceTotal / ($taxrate / 100 + 1));
+        }
 
-        $netprice = $PriceTotal - ($PriceTotal / ($taxrate / 100 + 1));
-
-
-        return number_format(round($netprice, 2),2,",","");
+        return number_format(round($taxAmount, 2),2,",","");
     }
 
 

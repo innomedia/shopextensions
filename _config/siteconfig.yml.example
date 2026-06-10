@@ -1,0 +1,25 @@
+---
+Name: shopextensions-siteconfig-example
+After: '#shopextensions'
+---
+# Example configuration for SiteConfigExtension fields
+# Copy this to siteconfig.yml and uncomment/modify as needed
+
+# To show only specific fields in SiteConfig:
+# SilverStripe\SiteConfig\SiteConfig:
+#   extensions:
+#     - ShopExtensions\SiteConfigExtension
+# 
+# ShopExtensions\SiteConfigExtension:
+#   enabled_fields:
+#     - AdminNotificationMail
+#     - ReceiptLogo
+#     - ReceiptHeader
+#     - ReceiptFooter
+#     # - CostHint
+#     # - HintPayment
+#     # - HintAfterPayment
+#
+# To hide all fields, use an empty array:
+# ShopExtensions\SiteConfigExtension:
+#   enabled_fields: []

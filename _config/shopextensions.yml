@@ -15,17 +15,34 @@ ShopExtensions\CustomOrderEmailNotifier:
 SilverStripe\ORM\FieldType\DBCurrency:
   currency_symbol: '€'
 
+# Configure tax calculation
+ShopExtensions\CustomTaxModifier:
+  # Tax mode: 'inclusive' = tax included in prices (Enthaltene MwSt / inkl. MwSt)
+  #           'exclusive' = tax added on top of prices (zzgl. MwSt)
+  tax_mode: 'inclusive'  # Options: 'inclusive' or 'exclusive'
+  
+  # Per-product tax: when true, each product can have its own tax rate
+  #                  when false, all products use the static default_tax_rate
+  per_product_tax: false
+  
+  # Default/static tax rate (used when per_product_tax is false, or as fallback)
+  default_tax_rate: 19
+
 # Register Order extension
 SilverShop\Model\Order:
   extensions:
     - ShopExtensions\OrderExtension
 
-# Register Product extension for RequiresShipping logic
+# Register Product extension for RequiresShipping logic and Tax field
 SilverShop\Page\Product:
   extensions:
     - ShopExtensions\ProductExtension
   # Default: physical products require shipping
   requires_shipping: true
+
+# Configure default tax rate for new products
+ShopExtensions\ProductExtension:
+  default_tax_rate: 19
 
 # Example: Digital products/courses don't require shipping
 # Configure specific product classes to not require shipping:
