@@ -2,9 +2,10 @@
 
 namespace ShopExtensions;
 
+use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Extension;
+use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
-use SilverStripe\Forms\NumericField;
 
 class ProductExtension extends Extension
 {
@@ -16,11 +17,21 @@ class ProductExtension extends Extension
 
     /**
      * Default tax rate for new products
+     * Define in YAML config
      * 
      * @config
      * @var float
      */
     private static $default_tax_rate = 19;
+
+    /**
+     * Available tax rates for dropdown selection
+     * Must be defined in YAML config
+     * 
+     * @config
+     * @var array
+     */
+    private static $available_tax_rates = [];
 
     /**
      * Add Tax field to products for per-product tax rates
@@ -34,7 +45,7 @@ class ProductExtension extends Extension
      */
     public function populateDefaults()
     {
-        $this->owner->Tax = $this->owner->config()->get('default_tax_rate');
+        $this->owner->Tax = Config::inst()->get(ProductExtension::class, 'default_tax_rate');
     }
 
     /**
@@ -43,22 +54,28 @@ class ProductExtension extends Extension
     public function updateCMSFields(FieldList $fields)
     {
         // Only add Tax field if per_product_tax is enabled
-        $fields->removeByName("Tax");
         $taxModifierClass = 'ShopExtensions\\CustomTaxModifier';
         if (class_exists($taxModifierClass)) {
             $perProductTax = $taxModifierClass::config()->get('per_product_tax');
             
             if ($perProductTax) {
-                $taxField = NumericField::create('Tax', 'Steuersatz (%)')
-                    ->setDescription('Mehrwertsteuersatz für dieses Produkt (z.B. 19 für 19%)')
-                    ->setScale(2);
+                $availableRates = Config::inst()->get(ProductExtension::class, 'available_tax_rates');
+                $defaultRate = Config::inst()->get(ProductExtension::class, 'default_tax_rate');
                 
-                // Add to Main tab, after Price field if it exists
-                if ($fields->dataFieldByName('BasePrice')) {
-                    $fields->insertAfter('BasePrice', $taxField);
-                } else {
-                    $fields->addFieldToTab('Root.Pricing', $taxField);
-                }
+                // Use existing value or default
+                $currentValue = $this->owner->Tax ?: $defaultRate;
+                
+                $taxField = DropdownField::create('Tax', 'Steuersatz')
+                    ->setSource($availableRates)
+                    ->setValue($currentValue)
+                    ->setDescription('Mehrwertsteuersatz für dieses Produkt');
+                
+                // Replace the auto-scaffolded field with our dropdown
+                $fields->removeByName('Tax');
+                $fields->addFieldToTab('Root.Pricing', $taxField);
+            } else {
+                // If per_product_tax is disabled, remove the field entirely
+                $fields->removeByName('Tax');
             }
         }
     }
