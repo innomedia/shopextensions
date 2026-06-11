@@ -43,6 +43,10 @@ SilverShop\Page\Product:
 # Configure default tax rate for new products
 ShopExtensions\ProductExtension:
   default_tax_rate: 19
+  available_tax_rates:
+    '0': '0% (steuerfrei)'
+    '7': '7% (ermäßigt)'
+    '19': '19% (regulär)'
 
 # Example: Digital products/courses don't require shipping
 # Configure specific product classes to not require shipping:
