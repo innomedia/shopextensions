@@ -69,7 +69,6 @@ class CustomTaxModifier extends Base
         if ($this->config()->get('tax_mode') === 'exclusive') {
             return $subtotal + $this->Amount;
         }
-        Debug::dump($this->config()->get('tax_mode'));
         // If inclusive, subtotal already contains tax
         return $subtotal;
     }
@@ -185,7 +184,6 @@ class CustomTaxModifier extends Base
             }
         }
         
-        Debug::Dump($PriceTotal);
         $taxMode = $this->config()->get('tax_mode');
         
         if ($taxMode === 'exclusive') {
