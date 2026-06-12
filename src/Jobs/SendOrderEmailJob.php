@@ -261,7 +261,6 @@ class SendOrderEmailJob extends AbstractQueuedJob
         $checkoutpage = CheckoutPage::get()->first();
         $completemessage = $checkoutpage ? $checkoutpage->PurchaseComplete : '';
         $fromEmail = $siteConfig->AdminEmail ?: Email::config()->admin_email;
-        $to = "bk@tietge.com";
         $email = Email::create()
             ->setHTMLTemplate($template)
             ->setTo($to)
