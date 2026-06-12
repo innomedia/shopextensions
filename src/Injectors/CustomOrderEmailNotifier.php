@@ -175,7 +175,7 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
         $to = $this->order->getLatestEmail();
         $checkoutpage = CheckoutPage::get()->first();
         $completemessage = $checkoutpage ? $checkoutpage->PurchaseComplete : '';
-
+        $fromEmail = $siteConfig->AdminEmail ?: Email::config()->admin_email;
         /**
          * @var Email $email
          */
@@ -191,8 +191,7 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
                 ->setTo($to)
                 ->setSubject($subject)
                 ->setFrom(
-                    $siteConfig->AdminEmail ?: Email::config()->admin_email,
-                    $siteConfig->AdminName ?: null
+                    $fromEmail
                 );
             if(Config::inst()->get('ShopConfig', 'sendReceipt') != false){
                 $email->addAttachmentFromData($this->order->PDFReceipt('binary'), $filename, 'application/pdf');
@@ -204,8 +203,7 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
                 ->setTo($to)
                 ->setSubject($subject)
                 ->setFrom(
-                    $siteConfig->AdminEmail ?: Email::config()->admin_email,
-                    $siteConfig->AdminName ?: null
+                    $fromEmail
                 );
         }
 
