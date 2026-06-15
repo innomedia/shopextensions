@@ -31,6 +31,9 @@ class CheckoutPageControllerExtension extends Extension
             );
         }
         
+        // Set success link to order details page (fixes zero-total order redirects)
+        $newForm->setSuccessLink($newForm->getOrderProcessor()->getReturnUrl());
+        
         $newForm->Cart = $this->owner->Cart();
         
         // Apply the template flattening logic
