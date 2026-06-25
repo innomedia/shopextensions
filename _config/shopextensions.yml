@@ -53,6 +53,9 @@ ShopExtensions\ProductExtension:
 Course:
   requires_shipping: false
 
+PremiumMembership:
+  requires_shipping: false
+
 SilverShop\Page\AccountPageController:
   extensions:
   - ShopExtensions\AccountPageControllerExtension
