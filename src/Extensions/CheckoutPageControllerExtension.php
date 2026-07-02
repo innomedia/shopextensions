@@ -13,9 +13,33 @@ use SilverShop\Discounts\Form\CouponForm;
 use Dynamic\CountryDropdownField\Fields\CountryDropdownField;
 use SilverStripe\Forms\CheckboxField;
 
+/**
+ * Extension on {@see \SilverShop\Page\CheckoutPageController} that rebuilds the checkout
+ * order form.
+ *
+ * It swaps in the {@see CustomCheckoutComponentConfig} (which drops the shipping address
+ * component for orders that need no shipping), renders the form with the
+ * "ExtendedCheckoutForm" template, and flattens nested CompositeFields into a single flat
+ * FieldList for a simpler layout. It also sets the success link so that zero-total orders
+ * redirect straight to the order details page instead of the payment step.
+ *
+ * Registered against SilverShop\Page\CheckoutPageController in
+ * _config/shopextensions.yml.
+ *
+ * @property \SilverShop\Page\CheckoutPageController $owner
+ */
 class CheckoutPageControllerExtension extends Extension
 {
-    
+    /**
+     * Replaces the default checkout order form with a customised version.
+     *
+     * Builds a new PaymentForm from the custom component config, keeps the "Submit Payment"
+     * action when the config provides on-site payment data, sets the success/return link,
+     * applies the ExtendedCheckoutForm template, flattens any CompositeFields, and hands the
+     * result back through the by-reference $form argument.
+     *
+     * @param PaymentForm $form The order form to replace, passed by reference.
+     */
     public function updateOrderForm(PaymentForm &$form)
     {
         // Replace the form with our custom checkout component config

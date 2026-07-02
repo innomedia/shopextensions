@@ -8,7 +8,7 @@
 <% end_if %>
     <fieldset class="border-0 p-0">
         <% if $Legend %><legend class="text-2xl font-bold text-primary mb-4">$Legend</legend><% end_if %>
-        
+
         <%-- Account Creation Section --%>
         <% if not $CurrentMember %>
             <div class="mb-8 lg:mb-10 pb-8 lg:pb-10 border-b border-primary/10">
@@ -21,7 +21,7 @@
                 <div>$Fields.fieldByName(SilverShop-Checkout-Component-Membership_Password).FieldHolder</div>
             </div>
         <% end_if %>
-        
+
         <%-- Customer Details Section --%>
         <div class="mb-8 lg:mb-10">
             <h2 class="text-xl lg:text-2xl font-bold text-primary mb-4 lg:mb-5"><%t CheckoutForm.CUSTOMERDETAILS 'Kontaktdaten' %></h2>
@@ -141,7 +141,7 @@
                 }, 50);
             });
         }
-        
+
         var form = $('#PaymentForm_OrderForm');
         if (form.length) {
             scrollToInvalid(form);
@@ -156,7 +156,7 @@
         opacity: 0;
         pointer-events: none;
     }
-    
+
     #PaymentForm_OrderForm_SilverShop-Checkout-Component-Terms_ReadTermsAndConditions_Holder label {
         cursor: pointer;
     }

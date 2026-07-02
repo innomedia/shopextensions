@@ -4,5 +4,7 @@ Name: shopextensionroutes
 ---
 SilverStripe\Control\Director:
   rules:
-    'ProductController//$Action/$ID/$Name': 'ProductPageController'
     ajaxcart//$Action/$ID/$Name: AjaxCartController
+    # Access-controlled invoice / delivery-slip PDF download (owner member or CMS user only).
+    # Replaces the old, unsafe StreamReceipt/StreamDeliverySlip actions on PageController.
+    'OrderReceipt//$Action/$ID': 'ShopExtensions\Controllers\OrderReceiptController'

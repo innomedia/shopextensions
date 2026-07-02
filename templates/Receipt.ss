@@ -1,6 +1,6 @@
 <% include ReceiptCSS %>
 <div class="page">
-    <img src="$SiteConfig.ReceiptLogo.Fit(770,770).Link" class="logo"/>
+    <% if $SiteConfig.ReceiptLogoDataURI %><img src="$SiteConfig.ReceiptLogoDataURI" class="logo"/><% end_if %>
     <div class="addresscontainer">
         <div style="padding-left: 0;font-size: 8pt;color:#000000">
             $SiteConfig.ReceiptHeader

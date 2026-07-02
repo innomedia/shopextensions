@@ -1,0 +1,76 @@
+# =============================================================================
+# Opt-in: Rechnungs-/Buchhaltungs-Export (DATEV-CSV + Sammel-PDF)
+#
+# Diese Datei NICHT direkt bearbeiten. Kopieren nach z. B.
+#   app/_config/receiptexport.yml
+# und die Werte (v. a. die DATEV-Konten!) an das Projekt anpassen.
+#
+# Das Feature ist standardmäßig AUS. Erst durch das Kopieren/Aktivieren dieser
+# Konfiguration werden die Steuer-Engine, die Export-Route und die Buttons scharf.
+# =============================================================================
+---
+Name: shopextensions-receiptexport
+After: '#shopextensions'
+---
+
+# 1) Steuer-Engine auf der Order aktivieren (liefert getTaxInformation()).
+#    Nötig für die korrekte Aufschlüsselung je Steuersatz im CSV/PDF.
+SilverShop\Model\Order:
+  extensions:
+    - ShopExtensions\OrderTaxExtension
+  # Storno-Feature aktivieren: beim Wechsel auf "AdminCancelled" wird ein Storno-Datum
+  # gestempelt, im CMS steht der Button "Stornorechnung herunterladen" (Nummer = Rechnungs-
+  # nummer + "-S") und der Export erzeugt die Stornobuchung (S-Zeile).
+  enable_storno: true
+  # Optional: Suffix der Storno-Belegnummer (Default "-S"), z. B. RE10003 -> RE10003-S.
+  # storno_suffix: '-S'
+
+ShopExtensions\OrderTaxExtension:
+  # Steuersatz, unter dem Versand bei reinen 0%-Bestellungen verbucht wird.
+  high_tax_rate: 19
+
+# Optional: die Steuer-Anzeige in der Bestellübersicht/Rechnung aus der Engine
+# speisen, damit Anzeige und Export exakt übereinstimmen (Coupon/Giftcard/Versand
+# korrekt je Satz verteilt). Standard: aus (einfache, item-basierte Berechnung).
+ShopExtensions\CustomTaxModifier:
+  use_tax_engine_for_display: true
+
+# 2) Export-Route registrieren. Segment "shopexport" ist frei wählbar; wenn geändert,
+#    auch SiteConfigExportExtension.route_segment (unten) anpassen.
+SilverStripe\Control\Director:
+  rules:
+    'shopexport//$Action/$ID/$OtherID': 'ShopExtensions\Controllers\ReceiptExportController'
+
+# 3) Export-Controller konfigurieren.
+ShopExtensions\Controllers\ReceiptExportController:
+  enabled: true
+  pdf_folder: 'Rechnungsexport'
+  datev:
+    kennzeichen: 'EXTF'
+    version: 500
+    # Beraternummer (aus der DATEV-Kanzlei). Leer lassen, bis vom Steuerbüro bekannt.
+    berater: ''
+    account_length: 4
+    # Gegenkonto (Debitorensammelkonto o. Ä.) und Kostenstelle.
+    contra_account: ''
+    cost_centre_1: ''
+    # Erlöskonten je Steuersatz. ACHTUNG: Das sind projekt-/kanzleispezifische Konten!
+    # Die folgenden Werte stammen aus dem oap-Projekt und sind NUR BEISPIELE –
+    # unbedingt mit dem Steuerbüro abstimmen, sonst wird auf fremde Konten gebucht.
+    account_by_rate:
+      0: ''    # Beispiel oap: 4120 (steuerfreie Umsätze)
+      7: ''    # Beispiel oap: 4300 (ermäßigter Satz)
+      19: ''   # Beispiel oap: 4410 (Regelsatz)
+
+# 4) Trigger-Buttons (Monat/Jahr + DATEV-CSV / Sammel-PDF) im SiteConfig-„Shop"-Reiter.
+Silverstripe\SiteConfig\SiteConfig:
+  extensions:
+    - ShopExtensions\SiteConfigExportExtension
+
+ShopExtensions\SiteConfigExportExtension:
+  enabled: true
+  route_segment: 'shopexport'
+
+# CLI-Nutzung (z. B. Cronjob, exportiert den Vormonat):
+#   vendor/bin/sake shopexport/csv
+#   vendor/bin/sake shopexport/pdf

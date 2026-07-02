@@ -1,0 +1,38 @@
+# =============================================================================
+# Opt-in: Zahlart-Vorauswahl im Checkout (Payment-Tiles)
+#
+# Der Kunde wählt die konkrete Zahlart (z. B. Mollie-Untermethode wie iDEAL,
+# Kreditkarte, PayPal) direkt im Checkout als Kachel aus. Die Auswahl reist mit
+# dem Formular (kein JS-Hack, kein Session-Seitenkanal) und wird korrekt an den
+# Zahlungsanbieter durchgereicht, sodass dessen eigener Auswahlbildschirm
+# übersprungen wird.
+#
+# Kopieren nach z. B. app/_config/paymenttiles.yml und aktivieren.
+# Standardmäßig AUS: ohne diese Konfiguration bleibt der Standard-Checkout aktiv.
+# =============================================================================
+---
+Name: shopextensions-paymenttiles
+After: '#shopextensions'
+---
+
+# 1) Feature einschalten: Tile-Component statt Standard-Gateway-Radioliste.
+#    Die Kacheln werden nur angezeigt, wenn mindestens eine aktive Zahlart gepflegt ist,
+#    sonst bleibt automatisch das Standardverhalten aktiv (Fallback).
+ShopExtensions\CustomCheckoutComponentConfig:
+  use_payment_tiles: true
+
+# 2) Verwaltung der Zahlarten (GridField „Zahlarten") im SiteConfig-„Shop"-Reiter.
+Silverstripe\SiteConfig\SiteConfig:
+  extensions:
+    - ShopExtensions\SiteConfigPaymentTilesExtension
+
+ShopExtensions\SiteConfigPaymentTilesExtension:
+  enabled: true
+
+# Danach unter Einstellungen → Shop → Zahlarten die Kacheln anlegen, z. B.:
+#   Titel "Kreditkarte", Gateway "Mollie", Methoden-Code "creditcard", Icon hochladen
+#   Titel "PayPal",      Gateway "Mollie", Methoden-Code "paypal"
+#   Titel "SEPA",        Gateway "Mollie", Methoden-Code "directdebit"
+# Für Gateways ohne Untermethode (z. B. PayPal_Express, Manual) den Methoden-Code leer lassen.
+#
+# Danach: vendor/bin/sake dev/build flush=1

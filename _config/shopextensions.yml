@@ -1,6 +1,10 @@
 ---
 Name: shopextensions
-After: silvershop/config#shopconfig
+# Apply after silvershop's own extensions so SiteConfig sub-tabs land inside silvershop's
+# Root.Shop.ShopTabs TabSet (built by ShopConfigExtension) instead of spawning a duplicate
+# "Shop" tab. The real silvershop config doc is named `silvershop-extensions`; the previous
+# `silvershop/config#shopconfig` reference did not exist and was silently ignored.
+After: '#silvershop-extensions'
 ---
 ShopConfig:
   sendReceipt: true
@@ -11,6 +15,11 @@ ShopExtensions\CustomOrderEmailNotifier:
   use_queued_jobs: true
   # Set to false to disable status change emails
   send_statuschanges: true
+  # Per-mail-type control of the invoice PDF attachment.
+  # These act on top of the global ShopConfig.sendReceipt master switch above.
+  attach_invoice_to_receipt: true
+  attach_invoice_to_admin: true
+  attach_invoice_to_confirmation: false
 
 SilverStripe\ORM\FieldType\DBCurrency:
   currency_symbol: '€'
@@ -40,13 +49,18 @@ SilverShop\Page\Product:
   # Default: physical products require shipping
   requires_shipping: true
 
-# Configure default tax rate for new products
+# Configure default tax rate for new products.
+# IMPORTANT: available_tax_rates is a LIST of {rate, label} maps, NOT an associative
+# array keyed by rate. SilverStripe's config merge treats an array whose keys are all
+# integers (e.g. 0, 7, 19) as an indexed list and REINDEXES the keys to 0, 1, 2 — which
+# would make the CMS dropdown store the option index instead of the actual tax rate.
+# The list-of-maps format below avoids that; ProductExtension builds the dropdown from it.
 ShopExtensions\ProductExtension:
   default_tax_rate: 19
   available_tax_rates:
-    '0': '0% (steuerfrei)'
-    '7': '7% (ermäßigt)'
-    '19': '19% (regulär)'
+    - { rate: 0, label: '0% (steuerfrei)' }
+    - { rate: 7, label: '7% (ermäßigt)' }
+    - { rate: 19, label: '19% (regulär)' }
 
 # Example: Digital products/courses don't require shipping
 # Configure specific product classes to not require shipping:
@@ -72,12 +86,24 @@ SilverShop\Model\Address:
 SilverStripe\Omnipay\Service\PurchaseService:
   extensions:
   - ShopExtensions\ExtendedPurchaseService
+# Assign the invoice number when a Manual/invoice payment is authorized/captured. The
+# Cart→Unpaid transition happens before the Payment exists, so this can't be done in
+# Order::onStatusChange (see PaymentExtension for the full rationale).
+SilverStripe\Omnipay\Model\Payment:
+  extensions:
+  - ShopExtensions\PaymentExtension
 SilverShop\Model\OrderItem:
   extensions:
   - ShopExtensions\OrderItemExtension
 SilverShop\Page\ProductController:
   extensions:
   - ShopExtensions\ProductControllerExtension
+# Tailwind styling for the frontend add-to-cart form. VariationForm extends
+# AddProductForm and calls the parent constructor, so this single registration
+# styles both forms.
+SilverShop\Forms\AddProductForm:
+  extensions:
+  - ShopExtensions\AddProductFormExtension
 Silverstripe\SiteConfig\SiteConfig:
   extensions:
   - ShopExtensions\SiteConfigExtension
@@ -90,18 +116,21 @@ Silverstripe\SiteConfig\SiteConfig:
 #     - ReceiptLogo
 #     - ReceiptHeader
 #     - ReceiptFooter
+#     - ReceiptPhone
 #     - CostHint
 #     - HintPayment
 #     - HintAfterPayment
+#     - InvoiceNumberPrefix
+#     - InvoiceNumberStart
 
-PageController:
-  extensions:
-    - ShopExtensions\PageControllerExtension
-
-# Use custom checkout component config
+# NOTE: We deliberately do NOT override the SilverShop\Checkout\CheckoutComponentConfig
+# service here. The checkout order form already builds CustomCheckoutComponentConfig
+# explicitly in CheckoutPageControllerExtension::updateOrderForm(), so the override was
+# redundant. Worse, it made EVERY base CheckoutComponentConfig::create() consumer (the
+# discounts CouponForm, the multi-step checkout steps, ...) receive the full checkout
+# component set instead of an empty base config — which flooded the coupon form with all
+# checkout fields. Leaving the base service untouched keeps the coupon form slim.
 SilverStripe\Core\Injector\Injector:
-  SilverShop\Checkout\CheckoutComponentConfig:
-    class: ShopExtensions\CustomCheckoutComponentConfig
   # Use custom order email notifier with queued job support
   SilverShop\Checkout\OrderEmailNotifier:
     class: ShopExtensions\CustomOrderEmailNotifier
