@@ -16,6 +16,9 @@ After: '#shopextensions'
 #     - ReceiptLogo
 #     - ReceiptHeader
 #     - ReceiptFooter
+#     - ReceiptPhone
+#     - InvoiceNumberPrefix
+#     - InvoiceNumberStart
 #     # - CostHint
 #     # - HintPayment
 #     # - HintAfterPayment

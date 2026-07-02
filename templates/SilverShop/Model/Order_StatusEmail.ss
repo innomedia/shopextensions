@@ -120,7 +120,7 @@
                                             <td class="content-block" valign="top">
                                                 $SiteConfig.Title<br/>
                                                 $FromEmail<br/>
-                                                <%t SilverShop\ShopEmail.PhoneNumber "PhoneNumber" %>
+                                                <% if $SiteConfig.ReceiptPhone %>$SiteConfig.ReceiptPhone<% end_if %>
                                             </td>
                                         </tr>
                                     </table>

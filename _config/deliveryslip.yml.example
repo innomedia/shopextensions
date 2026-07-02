@@ -1,0 +1,20 @@
+---
+Name: app-deliveryslip
+After: '#shopextensions'
+---
+# =============================================================================
+# Lieferschein (delivery slip) — optionales Feature
+#
+# Aktiviert den „Lieferschein herunterladen"-Button an der Bestellung im CMS und die Route
+# /OrderReceipt/StreamDeliverySlip/<ID>. Der Lieferschein zeigt nur Artikel + Menge
+# (keine Preise/Summen/Zahlungen), die Nummer wird aus der Bestellung abgeleitet.
+#
+# Standard: aus. Kopiere diese Datei nach app/_config/deliveryslip.yml, um es einzuschalten.
+# Reine Digital-/Seminar-Shops ohne Warenversand brauchen es i. d. R. nicht.
+#
+# Das Template liegt in shopextensions/templates/DeliverySlip.ss und kann projektseitig durch
+# themes/<theme>/templates/DeliverySlip.ss überschrieben werden (Theme-Cascade greift zuerst).
+# =============================================================================
+
+SilverShop\Model\Order:
+  enable_delivery_slip: true

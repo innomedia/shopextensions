@@ -3,6 +3,7 @@
 namespace ShopExtensions\Jobs;
 
 use Psr\Log\LoggerInterface;
+use ShopExtensions\CustomOrderEmailNotifier;
 use SilverShop\Model\Order;
 use SilverShop\Model\OrderStatusLog;
 use SilverShop\Page\CheckoutPage;
@@ -18,7 +19,14 @@ use Symbiote\QueuedJobs\Services\QueuedJob;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 /**
- * Queued job for sending order emails asynchronously
+ * Queued job that sends a single order email asynchronously, decoupling delivery from the
+ * checkout/payment request. Created by {@see CustomOrderEmailNotifier} when queued sending is
+ * enabled. The job stores the order ID, the email type ('confirmation', 'receipt',
+ * 'admin_notification', 'cancel_notification', 'status_change') and any extra params, then
+ * rebuilds and sends the matching email in process(). Runs as an IMMEDIATE job.
+ *
+ * The invoice PDF attachment for each type is gated by
+ * {@see CustomOrderEmailNotifier::shouldAttachInvoice()}.
  */
 class SendOrderEmailJob extends AbstractQueuedJob
 {
@@ -109,7 +117,7 @@ class SendOrderEmailJob extends AbstractQueuedJob
             ['OrderNo' => $order->Reference]
         );
 
-        $email = $this->buildEmail($order, 'SilverShop/Model/Order_ConfirmationEmail', $subject);
+        $email = $this->buildEmail($order, 'SilverShop/Model/Order_ConfirmationEmail', $subject, 'confirmation');
 
         if (Config::inst()->get('SilverShop\Checkout\OrderEmailNotifier', 'bcc_confirmation_to_admin')) {
             $email->setBCC(Email::config()->admin_email);
@@ -127,7 +135,7 @@ class SendOrderEmailJob extends AbstractQueuedJob
             ['OrderNo' => $order->Reference]
         );
 
-        $email = $this->buildEmail($order, 'SilverShop/Model/Order_ReceiptEmail', $subject);
+        $email = $this->buildEmail($order, 'SilverShop/Model/Order_ReceiptEmail', $subject, 'receipt');
 
 
         if (Config::inst()->get('SilverShop\Checkout\OrderEmailNotifier', 'bcc_receipt_to_admin')) {
@@ -166,7 +174,7 @@ class SendOrderEmailJob extends AbstractQueuedJob
                 $fromEmail
             );
 
-        if (Config::inst()->get('ShopConfig', 'sendReceipt') != false) {
+        if (CustomOrderEmailNotifier::shouldAttachInvoice('admin_notification')) {
             $email->addAttachmentFromData($order->PDFReceipt('binary'), $filename, 'application/pdf');
         }
 
@@ -254,7 +262,7 @@ class SendOrderEmailJob extends AbstractQueuedJob
         }
     }
 
-    protected function buildEmail(Order $order, string $template, string $subject): Email
+    protected function buildEmail(Order $order, string $template, string $subject, string $type = 'receipt'): Email
     {
         $siteConfig = SiteConfig::current_site_config();
         $to = $order->getLatestEmail();
@@ -269,12 +277,10 @@ class SendOrderEmailJob extends AbstractQueuedJob
                 $fromEmail
             );
 
-        // Add PDF attachment for invoiced orders
-        if ($order->InvoiceNumber()) {
+        // Add PDF attachment for invoiced orders, subject to the per-type attach flag
+        if ($order->InvoiceNumber() && CustomOrderEmailNotifier::shouldAttachInvoice($type)) {
             $filename = 'Rechnung ' . $order->InvoiceNumber() . '.pdf';
-            if (Config::inst()->get('ShopConfig', 'sendReceipt') != false) {
-                $email->addAttachmentFromData($order->PDFReceipt('binary'), $filename, 'application/pdf');
-            }
+            $email->addAttachmentFromData($order->PDFReceipt('binary'), $filename, 'application/pdf');
         }
 
         $email->setData([
