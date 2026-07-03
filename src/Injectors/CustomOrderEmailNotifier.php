@@ -43,8 +43,8 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
 
     /**
      * Per-mail-type control of whether the invoice PDF is attached.
-     * These act on top of the global ShopConfig.sendReceipt master switch, so a project
-     * that never sets them keeps the previous behaviour (attach whenever sendReceipt is on).
+     * These act on top of the SiteConfig.SendReceiptEmail master switch, so a project
+     * that never sets them keeps the previous behaviour (attach whenever SendReceiptEmail is on).
      */
     private static bool $attach_invoice_to_receipt = true;
     private static bool $attach_invoice_to_admin = true;
@@ -52,14 +52,14 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
 
     /**
      * Decide whether the invoice PDF should be attached to a given mail type.
-     * Combines the global ShopConfig.sendReceipt master switch with the per-type flag.
+     * Combines the SiteConfig.SendReceiptEmail master switch with the per-type flag.
      *
      * @param string $type One of 'receipt', 'confirmation', 'admin_notification'
      */
     public static function shouldAttachInvoice(string $type): bool
     {
-        // Master switch, kept for backwards compatibility with existing projects
-        if (Config::inst()->get('ShopConfig', 'sendReceipt') == false) {
+        // Master switch: now stored in SiteConfig instead of ShopConfig YAML
+        if (!SiteConfig::current_site_config()->SendReceiptEmail) {
             return false;
         }
 
@@ -243,7 +243,7 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
                 ->setFrom(
                     $fromEmail
                 );
-            if(Config::inst()->get('ShopConfig', 'sendReceipt') != false){
+            if(SiteConfig::current_site_config()->SendReceiptEmail){
                 $email->addAttachmentFromData($this->order->PDFReceipt('binary'), $filename, 'application/pdf');
             }
         } else {

@@ -6,9 +6,6 @@ Name: shopextensions
 # `silvershop/config#shopconfig` reference did not exist and was silently ignored.
 After: '#silvershop-extensions'
 ---
-ShopConfig:
-  sendReceipt: true
-
 # Configure email sending behavior
 ShopExtensions\CustomOrderEmailNotifier:
   # Set to false to send emails directly without queuing (for debugging)
@@ -16,7 +13,7 @@ ShopExtensions\CustomOrderEmailNotifier:
   # Set to false to disable status change emails
   send_statuschanges: true
   # Per-mail-type control of the invoice PDF attachment.
-  # These act on top of the global ShopConfig.sendReceipt master switch above.
+  # These act on top of the SiteConfig.SendReceiptEmail master switch.
   attach_invoice_to_receipt: true
   attach_invoice_to_admin: true
   attach_invoice_to_confirmation: false
@@ -65,6 +62,8 @@ ShopExtensions\ProductExtension:
 # Example: Digital products/courses don't require shipping
 # Configure specific product classes to not require shipping:
 Course:
+  requires_shipping: false
+Webinar:
   requires_shipping: false
 
 PremiumMembership:

@@ -5,6 +5,7 @@ namespace ShopExtensions;
 use SilverStripe\AssetAdmin\Forms\UploadField;
 use SilverStripe\Assets\Image;
 use SilverStripe\Core\Extension;
+use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\HeaderField;
 use SilverStripe\Forms\HTMLEditor\HTMLEditorField;
@@ -47,6 +48,7 @@ class SiteConfigExtension extends Extension
         'AdminNotificationMail' => 'Text',
         'InvoiceNumberPrefix' => 'Text',
         'InvoiceNumberStart' => 'Int',
+        'SendReceiptEmail' => 'Boolean',
     ];
 
     private static $has_one = [
@@ -60,6 +62,7 @@ class SiteConfigExtension extends Extension
     private static array $defaults = [
         'InvoiceNumberPrefix' => 'RE',
         'InvoiceNumberStart' => 200000,
+        'SendReceiptEmail' => true,
     ];
 
     /**
@@ -78,6 +81,7 @@ class SiteConfigExtension extends Extension
         'HintAfterPayment',
         'InvoiceNumberPrefix',
         'InvoiceNumberStart',
+        'SendReceiptEmail',
     ];
 
     /**
@@ -146,6 +150,11 @@ class SiteConfigExtension extends Extension
             if ($enabled('InvoiceNumberStart')) {
                 $fields->addFieldToTab($invoiceTab, NumericField::create('InvoiceNumberStart', 'Erste Rechnungsnummer')
                     ->setDescription('Startwert des Nummernkreises. Wird nur für die allererste Rechnung genutzt; danach fortlaufend +1. Leer = 200000. Bereits vergebene Nummern werden nicht verändert.'));
+            }
+
+            if ($enabled('SendReceiptEmail')) {
+                $fields->addFieldToTab($invoiceTab, CheckboxField::create('SendReceiptEmail', 'Rechnung als PDF-Anhang versenden')
+                    ->setDescription('Wenn aktiviert, wird die Rechnung als PDF an die Bestell-E-Mails angehängt (je nach Konfiguration pro Mail-Typ). Ersetzt den YAML-Schalter ShopConfig.sendReceipt.'));
             }
         }
 
