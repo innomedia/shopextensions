@@ -210,7 +210,7 @@ class SiteConfigExtension extends Extension
         }
 
         // Downscale to the same box the template used before; keeps the embedded payload small.
-        $resized = $logo->Fit(770, 770);
+        $resized = $logo->Pad(770, 770);
         if (!$resized || !$resized->exists()) {
             return null;
         }
