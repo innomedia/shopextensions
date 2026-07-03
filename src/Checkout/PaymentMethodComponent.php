@@ -48,6 +48,20 @@ class PaymentMethodComponent extends Payment
      */
     protected function availableOptions(): ArrayList
     {
+        return self::availablePaymentOptions();
+    }
+
+    /**
+     * Active, usable payment options whose gateway is actually supported by the site.
+     *
+     * Static so the same tile set can be reused outside the checkout — notably by
+     * {@see \ShopExtensions\OrderActionsFormExtension} when re-paying an open order from the
+     * account, so the customer sees the identical tiles (incl. SEPA/iDEAL/card) there.
+     *
+     * @return ArrayList
+     */
+    public static function availablePaymentOptions(): ArrayList
+    {
         $supported = GatewayInfo::getSupportedGateways();
         $list = ArrayList::create();
         foreach (PaymentOption::get()->filter('Enabled', 1)->sort('Sort ASC') as $option) {

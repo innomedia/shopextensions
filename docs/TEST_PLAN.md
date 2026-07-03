@@ -8,7 +8,16 @@ Diese Checkliste wird am Ende der Optimierung **einmal komplett** durchgegangen.
 Voraussetzung für alle Tests: einmal `dev/build?flush=1` als Webserver-User (Schreibrechte
 auf `public/assets` müssen passen).
 
-Legende: ☐ offen · ☑ bestanden · ✗ fehlgeschlagen
+Legende: ☐ offen · ☑ bestanden · ✗ fehlgeschlagen · 🔴 **PRIORITÄT 1**
+
+---
+
+> ## 🔴 ZUERST PRÜFEN vor Go-Live: Verzögerte Zahlungen (SEPA/async) — **[Kapitel 11](#11-verzögerte-zahlungen-sepaasync--auto-storno-optionales-feature)**
+> Bevor das Modul produktiv geht, **müssen zwingend die Async-Payment-Tests aus Kapitel 11 als
+> Erstes** durchlaufen werden — insbesondere **11.1** (braucht es `use_async_notification`?),
+> **11.2** (async Unpaid→Paid, Webhook) und **11.8** (Doppelzahlung). Grund: das Zusammenspiel
+> Flag ↔ Webhook ↔ Rücksprung entscheidet über korrekte Zahlungszustände und verhindert
+> Doppelzahlungen. Voraussetzung: Mollie-Testmode + **öffentlich erreichbare Notify-URL**.
 
 ---
 
@@ -285,9 +294,112 @@ Legende: ☐ offen · ☑ bestanden · ✗ fehlgeschlagen
 
 ---
 
+## 11. Verzögerte Zahlungen (SEPA/async) & Auto-Storno (optionales Feature) — 🔴 PRIORITÄT 1 (vor Go-Live ZUERST prüfen)
+
+> Voraussetzung: `delayedpayments.yml.example` nach `app/_config/` kopiert
+> (`place_before_payment: true`, `GatewayInfo.Mollie.use_async_notification: true`,
+> `CancelStaleUnpaidOrdersTask.cancel_after_days`), `dev/build flush=1`. Mollie im **Testmode**
+> mit **öffentlich erreichbarer Notify-URL** (Produktion ok; lokal per Tunnel/ngrok), sonst kommt
+> die SEPA-Bestätigung nie an. Zahlart-Kacheln (Kap. 10) aktiv, u. a. eine SEPA-Kachel (Mollie,
+> Methoden-Code `directdebit`).
+
+### 11.1 🔴 Braucht es `use_async_notification` überhaupt? (offene Frage — bewusst prüfen)
+> **Kontext:** `use_async_notification` war bislang **nicht bewusst aktiv**, und trotzdem gab es
+> **keine Probleme** mit SEPA-Zahlungen, die erst Tage später quittiert wurden. Unklar ist, ob das
+> Flag wirklich nötig ist oder ob Mollie den späten Zahlungseingang auch ohne async-Notification
+> sauber auf `Paid` bringt. Deshalb **beide Zustände gegentesten** und das Ergebnis hier festhalten,
+> bevor das Flag dauerhaft gesetzt wird.
+
+- ☐ **Ohne `use_async_notification` (bisheriger Ist-Zustand):** SEPA-Testzahlung durchführen, die
+  erst verzögert quittiert. Prüfen, **wie** und **wann** die Order auf `Paid` geht (Webhook? erneuter
+  Aufruf? gar nicht?) und ob dabei etwas hängen bleibt (`Unpaid` ohne Auflösung). Beobachtung notieren.
+- ☐ **Mit `use_async_notification: true`:** gleiche SEPA-Testzahlung. Prüfen, ob der Übergang
+  `pending → Unpaid → Paid` sauber über den Webhook läuft (siehe 11.2).
+- ☐ **Entscheidung dokumentieren:** Bringt das Flag einen konkreten Unterschied (z. B. verlässlicheres
+  `Paid`, sonst hängende `Unpaid`), oder ist der bisherige Zustand ausreichend? Ergebnis + Begründung
+  hier eintragen; danach `delayedpayments.yml`/`payment.yml` entsprechend setzen **oder** das Flag
+  bewusst wieder entfernen.
+
+### 11.2 🔴 Async-Bestätigung (Unpaid → Paid)
+- ☐ **SEPA (directdebit):** Rücksprung von Mollie mit `pending` → Order steht auf **`Unpaid`**
+  (Kette `onAwaitingCaptured` → `placeOrder`). Später eintreffender Webhook → **`Paid`**
+  (`onCaptured` → `completePayment`). Status in CMS/DB prüfen.
+- ☐ **iDEAL / Kreditkarte, Flag AN:** Rücksprung → Order bleibt zunächst **`Unpaid`** (SuccessUrl),
+  `Paid` kommt **erst per Webhook** (`onCaptured`) Sekunden später — **nicht** instant beim Rücksprung.
+  (Nur mit Flag **AUS** capturt die Karte synchron im Rücksprung → sofort `Paid`. Siehe die
+  Kernbefund-Analyse in `docs/SEPA_DOUBLE_PAYMENT_PLAN.md`.)
+
+### 11.3 place_before_payment & Cleanup
+- ☐ **Order existiert vor dem Redirect:** Beim Klick auf „Zahlen" ist die Order bereits als
+  **`Unpaid`** angelegt, **bevor** zum Zahlungsanbieter weitergeleitet wird.
+- ☐ **Abbruch bei Mollie:** Order bleibt **`Unpaid`** (nicht `Cart`).
+- ☐ **CartCleanupTask** (`sake dev/tasks/CartCleanupTask` bzw. Cron) löscht **nur** echte Carts
+  (`Status='Cart'`), **keine** `Unpaid`-Orders — die abgebrochene SEPA-Order bleibt erhalten.
+
+### 11.4 Auto-Storno-Task
+- ☐ **Alt genug → storniert:** `Unpaid`-Order mit künstlich altem `LastEdited` (> `cancel_after_days`,
+  Default 14) und **ohne** Rechnungsnummer → `sake dev/tasks/cancel-stale-unpaid-orders` setzt sie
+  auf **`MemberCancelled`** und verschickt die **Hinweis-Mail** an den Kunden.
+- ☐ **Jünger/`Paid` unberührt:** Orders innerhalb der Karenzzeit sowie `Paid`-Orders werden **nicht**
+  angefasst.
+- ☐ **Selbstheilung:** Nach dem Cancel einen Webhook simulieren/eintreffen lassen → `onCaptured()`
+  lädt die (noch existierende) Order und `completePayment()` setzt sie zurück auf **`Paid`**.
+
+### 11.5 Wieder-Bezahlen im Konto (Re-Payment-Kacheln)
+- ☐ **Kacheln sichtbar:** Konto → offene Order → „Bezahlen" zeigt dieselben **Kacheln** wie im
+  Checkout (SEPA/iDEAL/Kreditkarte), **nicht** die rohe Gateway-Radioliste.
+- ☐ **Durchreichung:** SEPA-Re-Payment setzt `Order.UsedPaymentOptionID` und reicht die
+  Mollie-Untermethode durch (Auswahlschirm übersprungen).
+- ☐ **Fallback:** Ohne aktive `PaymentOption` (Feature aus) erscheint weiterhin die Standard-Liste
+  und die Zahlung funktioniert unverändert.
+
+### 11.6 Rechnungsnummern (kein Verbrennen, keine Lücke)
+- ☐ **Abgebrochene Mollie/Karten-Unpaid-Order** hat **keine** Rechnungsnummer; der Auto-Storno
+  trifft nur nummernlose Orders.
+- ☐ **B2B „auf Rechnung":** Bei einer Kachel mit **`InvoiceOnPlacement`** (bzw. Manual-Gateway) liegt
+  die Rechnungsnummer **schon bei Platzierung** (Cart→Unpaid) vor → Kunde kann referenziert
+  überweisen. Diese Order wird **nicht** auto-storniert (Mahnwesen); die Nummer bleibt auf der Order
+  (keine Lücke).
+- ☐ **Instant-Kacheln ohne `InvoiceOnPlacement`** (Kreditkarte/iDEAL/SEPA) bekommen die Nummer
+  weiterhin **erst bei `Paid`**.
+
+### 11.7 Mails & Storno-Feature
+- ☐ **Keine Bestätigungsmail bei Platzierung:** Das Platzieren (Unpaid) verschickt **keine**
+  Bestellbestätigung (`OrderProcessor.send_confirmation: false`); die Beleg-Mail (Receipt) geht erst
+  bei `Paid`.
+- ☐ **Storno-Feature unberührt:** `AdminCancelled` erzeugt weiterhin die Stornorechnung; der
+  Auto-Cancel (`MemberCancelled`) löst **kein** Storno aus.
+
+### 11.8 🔴 Doppelzahlung / Repay bei laufender Zahlung
+> **Opt-in:** nur aktiv mit `Order.manage_pending_payments: true` (Default false → dann verhält sich
+> alles wie im Standard-SilverShop und dieser Abschnitt entfällt). Details & Begründung:
+> `docs/SEPA_DOUBLE_PAYMENT_PLAN.md`. Weitere Config: `Order.pending_payment_grace_mins` (Default 5),
+> `Payment.auto_refund_duplicate` (Default false), `Payment.duplicate_alert_email`.
+
+- ☐ **Feature aus (Regression):** ohne `manage_pending_payments` erscheint das Repay-Formular wie
+  bisher, kein Warte-Screen, keine Duplikat-Erkennung.
+- ☐ **Gate greift:** Zahlung starten (Redirect zu Mollie), zurück ins Konto → offene Order: das
+  Repay-Formular ist **verborgen** und ein „Zahlung wird verarbeitet…"-Hinweis erscheint
+  (`HasPendingPayments`), solange die pending-Zahlung **jünger als 5 Min** ist.
+- ☐ **Gate gibt frei (kein Dauer-Lockout):** dieselbe Order nach Ablauf des Grace-Fensters (bzw.
+  `LastEdited`/`Created` künstlich alt) → Repay-Formular ist **wieder da** (legitimer
+  Methodenwechsel SEPA→Karte möglich).
+- ☐ **Idempotenz:** Repay abschicken, während eine frische pending-Zahlung existiert → Aktion bricht
+  mit Hinweis ab, es entsteht **keine** zweite Zahlung.
+- ☐ **Reconciliation (der SEPA-Fix):** Order per Karte bezahlen (→ `Paid`), dann eine zweite,
+  bereits gestartete SEPA per Webhook `paid` simulieren → `PaymentExtension::onCaptured` erkennt das
+  Duplikat: Order-Flag **`HasDuplicatePayment`** gesetzt, CMS-Warnung im Order-Tab „Main" sichtbar,
+  **Admin-Mail** verschickt. Mit `auto_refund_duplicate: true` zusätzlich: Duplikat wird via omnipay
+  erstattet (sofern Gateway Refund unterstützt).
+- ☐ **Kein Fehlalarm:** eine normale Einzelzahlung setzt `HasDuplicatePayment` **nicht**.
+
+---
+
 ## Offene Umgebungs-Punkte vor dem Testlauf
 - ☐ Schreibrechte `public/assets` gesetzt (für `dev/build` / ErrorPage-Generierung).
 - ☐ QueuedJobs-Worker läuft (sonst Mails testweise mit `use_queued_jobs: false` senden).
-- ☐ Für Feature-Tests (Kap. 9/10): jeweilige `*.yml.example` nach `app/_config/` kopiert und
+- ☐ Für Feature-Tests (Kap. 9/10/11): jeweilige `*.yml.example` nach `app/_config/` kopiert und
   `dev/build flush=1` ausgeführt.
-- ☐ Mollie im **Testmode** konfiguriert (für Kap. 10.3).
+- ☐ Mollie im **Testmode** konfiguriert (für Kap. 10.3 und 11).
+- ☐ Für Kap. 11: Mollie-**Notify-URL öffentlich erreichbar** (Tunnel/ngrok lokal), sonst kommt die
+  SEPA-Webhook-Bestätigung nie an.

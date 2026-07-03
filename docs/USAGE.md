@@ -13,6 +13,7 @@ Inhalt:
 6. [Stolperfallen](#6-stolperfallen)
 7. [Optional: Rechnungs-/Buchhaltungs-Export (DATEV-CSV & Sammel-PDF)](#7-optional-rechnungs-buchhaltungs-export-datev-csv--sammel-pdf)
 8. [Optional: Zahlart-Vorauswahl im Checkout (Payment-Tiles)](#8-optional-zahlart-vorauswahl-im-checkout-payment-tiles)
+9. [Optional: Verzögerte Zahlungen (SEPA/async) & Auto-Storno](#9-optional-verzögerte-zahlungen-sepaasync--auto-storno)
 
 ---
 
@@ -360,3 +361,101 @@ Code setzte fälschlich `paymentType` aus `$_SESSION` und reichte damit nichts d
 (`GatewayInfo::getSupportedGateways()`) und `Enabled` werden angezeigt. Ist keine aktive Zahlart
 gepflegt oder das Flag aus, bleibt automatisch der Standard-Checkout aktiv. Verfügbarkeitsregeln
 je Bestellung sind über den Erweiterungspunkt `PaymentOption::canUse()` nachrüstbar.
+
+### 8.5 Wieder-Bezahlen im Kundenkonto (gleiche Kacheln)
+Zahlt ein Kunde eine offene (`Unpaid`) Bestellung aus seinem Konto erneut, sieht er dieselben
+Kacheln wie im Checkout (inkl. SEPA/iDEAL/Kreditkarte) statt der rohen Gateway-Radioliste. Umsetzung:
+- `ShopExtensions\OrderActionsFormExtension` (über den `updateForm`-Hook) ersetzt das
+  `PaymentMethod`-Feld durch das `PaymentTileField`, gespeist aus
+  `PaymentMethodComponent::availablePaymentOptions()`.
+- Die Injector-Subclass `ShopExtensions\Forms\OrderActionsForm` löst die gewählte Kachel auf, setzt
+  `Order.UsedPaymentOptionID` (→ Mollie-Untermethode wird durchgereicht) und startet die Zahlung auf
+  dem Gateway der Kachel.
+
+Aktiviert wird das über dieselbe `paymenttiles.yml.example` (Abschnitt 3 der Datei). Ohne aktive
+`PaymentOption` fällt die Ansicht automatisch auf die Standard-Gateway-Liste zurück.
+
+---
+
+## 9. Optional: Verzögerte Zahlungen (SEPA/async) & Auto-Storno
+
+**Problem:** SEPA-Lastschrift (und andere asynchrone Mollie-Methoden) werden **nicht** im
+Browser-Rücksprung bestätigt, sondern Tage später per **Webhook** (Server-zu-Server). Ohne
+Vorkehrungen kann eine solche Bestellung verloren gehen (der `CartCleanupTask` löscht `Cart`-Orders
+nach 48 h **inklusive** Payment-Datensätzen), bevor der Zahlungseingang kommt → Geld ohne
+Bestellung.
+
+**Lösung (zwei getrennte, beide nötige Hälften):**
+1. **`place_before_payment: true`** — die Order wird beim Klick auf „Zahlen" als `Unpaid`-Datensatz
+   platziert, **bevor** eine Zahlung passiert. Der Cleanup (nur `Status='Cart'`) fasst platzierte
+   `Unpaid`-Orders nie an → „Order komplett weg" ist strukturell ausgeschlossen.
+2. **`use_async_notification: true`** (Mollie) — eine `pending`-Zahlung platziert die Order
+   (`onAwaitingCaptured` → `placeOrder` → `Unpaid`), der spätere Webhook settled sie
+   (`onCaptured` → `completePayment` → `Paid`). Gilt pro Gateway und deckt damit alle
+   Mollie-Untermethoden ab; der reale Zahlungsstatus entscheidet automatisch instant vs. verzögert.
+
+**Auto-Storno liegengebliebener Bestellungen:** Der Task
+`ShopExtensions\Tasks\CancelStaleUnpaidOrdersTask` storniert `Unpaid`-Orders, die länger als
+`cancel_after_days` (Default **14**) unverändert sind, **noch offen** (`TotalOutstanding > 0`) und
+**ohne Rechnungsnummer** sind. Er setzt sie auf **`MemberCancelled`** (löst **kein** Storno aus,
+Datensatz bleibt erhalten) und verschickt eine **Hinweis-Mail** an den Kunden. Weil storniert statt
+gelöscht wird, ist der Vorgang **reversibel**: ein spät eintreffender Webhook heilt die Order über
+`onCaptured()` zurück auf `Paid` (Selbstheilung).
+
+Der **Nummern-Filter ist entscheidend**: die Automatik fasst nur **nummernlose** Orders an (reine
+Mollie/Karten-Abbrecher) und kann so **nie** eine Lücke im Nummernkreis erzeugen. Nummerntragende
+Orders (Manual/„auf Rechnung" bzw. Kacheln mit `InvoiceOnPlacement`) sind ausgeschlossen und gehören
+ins **manuelle Mahnwesen**.
+
+**Rechnungsnummer schon bei Platzierung (je Zahlart):** Für „auf Rechnung"/Überweisung (v. a. B2B)
+braucht der Kunde die Rechnungsnummer bereits zum Überweisen. Dafür trägt jede `PaymentOption` das
+Flag **`InvoiceOnPlacement`** (CMS-pflegbar je Kachel). Ist es gesetzt, vergibt
+`OrderExtension::onPlaceOrder()` die Nummer sofort bei Platzierung (Cart→Unpaid). Instant-Methoden
+(Kreditkarte, iDEAL, SEPA) bleiben unmarkiert → Nummer weiterhin erst bei `Paid`, kein Verbrennen
+bei Abbruch. „Nummerntragend" = genau die `InvoiceOnPlacement`-Kacheln → deckungsgleich mit dem
+Ausschluss beim Auto-Storno.
+
+### 9.1 Aktivierung
+```yaml
+# app/_config/delayedpayments.yml  (aus delayedpayments.yml.example)
+SilverShop\Model\Order:
+  place_before_payment: true
+
+SilverStripe\Omnipay\GatewayInfo:
+  Mollie:
+    use_async_notification: true
+
+ShopExtensions\Tasks\CancelStaleUnpaidOrdersTask:
+  cancel_after_days: 14
+```
+Danach `vendor/bin/sake dev/build flush=1`.
+
+**Ops-Voraussetzung:** Die von silverstripe-omnipay registrierte **Notify-URL**
+(`PaymentGatewayController`-Route) muss **öffentlich erreichbar** sein (Produktion ok; lokal per
+Tunnel/ngrok testen), sonst kommt die SEPA-Bestätigung nie an.
+
+### 9.2 Cron
+Den Auto-Storno-Task regelmäßig laufen lassen (z. B. täglich):
+```bash
+vendor/bin/sake dev/tasks/cancel-stale-unpaid-orders
+```
+
+### 9.3 Config-Referenz
+| Variable | Default | Bedeutung |
+|---|---|---|
+| `SilverShop\Model\Order.place_before_payment` | `false` | Order wird bei „Zahlen" als `Unpaid` platziert, bevor die Zahlung startet. Schützt SEPA/async vor dem `CartCleanupTask`. |
+| `SilverStripe\Omnipay\GatewayInfo.Mollie.use_async_notification` | `false` | Aktiviert die async-Kette (pending→`Unpaid`, Webhook→`Paid`). Voraussetzung für SEPA. |
+| `CancelStaleUnpaidOrdersTask.cancel_after_days` | `14` | Karenzzeit, nach der eine liegengebliebene, nummernlose `Unpaid`-Order auf `MemberCancelled` gesetzt wird. |
+| `PaymentOption.InvoiceOnPlacement` | `false` (je Kachel) | Rechnungsnummer schon bei Platzierung vergeben (für „auf Rechnung"/Überweisung, v. a. B2B). Solche Orders sind vom Auto-Storno ausgenommen. |
+| `SilverShop\Model\Order.manage_pending_payments` | `false` | **Opt-in Doppelzahlungs-Schutz.** Versteckt das „erneut bezahlen"-Formular, solange eine Zahlung frisch läuft (Grace-Fenster), zeigt einen Warte-Hinweis, sichert die Repay-Action idempotent ab und erkennt/meldet doppelte Zahlungen. Aus = Standard-SilverShop. Details: `docs/SEPA_DOUBLE_PAYMENT_PLAN.md`. |
+| `SilverShop\Model\Order.pending_payment_grace_mins` | `5` | Fenster (Min), in dem eine frische pending-Zahlung das Repay sperrt (`0` = ganze pending-Dauer). |
+| `SilverStripe\Omnipay\Model\Payment.auto_refund_duplicate` | `false` | Bei erkanntem Duplikat automatisch via omnipay erstatten statt nur zu flaggen + Admin-Mail. |
+| `SilverStripe\Omnipay\Model\Payment.duplicate_alert_email` | `''` | Empfänger der Doppelzahlungs-Warnung (Fallback: `AdminNotificationMail`). |
+
+**Fallstricke:**
+- **Notify-URL:** Ohne öffentlich erreichbare Notify-URL wird die SEPA-Zahlung nie auf `Paid`
+  gesetzt (lokal Tunnel nutzen).
+- **Nummernlücke vermeiden:** Nur Zahlarten, bei denen der Kunde die Nummer wirklich vorab braucht,
+  mit `InvoiceOnPlacement` markieren — sonst verbrennt eine abgebrochene Zahlung eine Nummer.
+- **Kein Doppel-Storno:** Der Task nutzt bewusst `MemberCancelled` (nicht `AdminCancelled`), damit
+  das Storno-/Stornorechnungs-Feature (Abschnitt 7) **nicht** ausgelöst wird.

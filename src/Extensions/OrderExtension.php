@@ -111,6 +111,10 @@ class OrderExtension extends Extension{
         // tax_mode frozen at placement so a placed order's tax LABEL ("zzgl."/"Enthaltene MwSt.")
         // stays correct even if the config changes later (per-line amounts live on the OrderItem).
         'TaxMode' => 'Varchar(20)',
+        // Set by the reconciliation in ShopExtensions\PaymentExtension when a payment captures on an
+        // order that is already fully covered by another payment (e.g. customer switched SEPA→card
+        // and both settled). Flags the order for a refund review in the CMS.
+        'HasDuplicatePayment' => 'Boolean',
     ];
 
     /**
@@ -147,6 +151,16 @@ class OrderExtension extends Extension{
 
         $fields->addFieldToTab("Root.Rechnungen", LiteralField::create("DownloadReceipt", $receiptHtml));
 
+        // Loud warning when a duplicate payment was detected (e.g. SEPA + card both settled), so a
+        // CMS user can arrange a refund. Set by ShopExtensions\PaymentExtension reconciliation.
+        if ($this->owner->HasDuplicatePayment) {
+            $fields->addFieldToTab("Root.Main", LiteralField::create(
+                "DuplicatePaymentWarning",
+                "<div class='alert alert-danger' style='font-weight:600'>⚠️ Mögliche Doppelzahlung: "
+                    . "diese Bestellung wurde durch mehr als eine Zahlung abgedeckt. Bitte Rückerstattung prüfen.</div>"
+            ));
+        }
+
         // Delivery slip is an opt-in feature (enable_delivery_slip) — hide the button where the
         // project doesn't ship anything and hasn't enabled it.
         if ($this->owner->config()->get('enable_delivery_slip')) {
@@ -166,12 +180,47 @@ class OrderExtension extends Extension{
     }
 
     /**
-     * Whether the order may still be paid. Only relevant for discounted orders: an order
-     * carrying a discount stays payable while its status is in Order.payable_status.
+     * Grace window (minutes) during which a freshly started, still-in-flight payment blocks the
+     * "pay again" action, to prevent a second (duplicate) payment when the customer returns while
+     * the first is still pending (e.g. under load, or SEPA). Deliberately SHORT: a stuck/abandoned
+     * pending payment must not lock the order out of a legitimate retry (e.g. switching to card),
+     * and SEPA stays pending for days — so the real duplicate safety net is the reconciliation in
+     * {@see \ShopExtensions\PaymentExtension}, not an indefinite block. Set 0 to block for the whole
+     * pending duration (not recommended). See docs/SEPA_DOUBLE_PAYMENT_PLAN.md.
      *
-     * @return bool|null True/false for discounted orders, null when no discount applies.
+     * @config
+     * @var int
      */
-    public function canPay(){
+    private static int $pending_payment_grace_mins = 5;
+
+    /**
+     * Master switch for the pending-payment / duplicate-payment handling: the canPay gate that hides
+     * the "pay again" form while a payment is in flight, the "payment processing" waiting screen, the
+     * repay idempotency guard, and the duplicate-payment reconciliation in
+     * {@see \ShopExtensions\PaymentExtension}. Opt-in (default false) so projects that don't need it
+     * behave exactly as before. Enable per project via YAML (see delayedpayments.yml.example).
+     *
+     * @config
+     * @var bool
+     */
+    private static bool $manage_pending_payments = false;
+
+    /**
+     * Whether the order may still be paid.
+     *
+     * First gate: suppress paying while a payment is genuinely in flight (see
+     * {@see self::hasFreshPendingPayment()}), so the account "pay again" form and the checkout
+     * re-pay both disappear during the pending window. Otherwise defers to the discount-specific
+     * logic below (and, via a null return, to SilverShop's own canPay).
+     *
+     * @return bool|null False while a fresh payment is in flight; true/false for discounted orders;
+     *                   null when neither applies (defer to core logic).
+     */
+    public function canPay($member = null){
+        if ($this->hasFreshPendingPayment()) {
+            return false;
+        }
+
         $discounts = $this->owner->Discounts();
         $totaldiscount = 0;
         if(count($discounts) > 0 ){
@@ -189,6 +238,42 @@ class OrderExtension extends Extension{
             }
             return true;
         }
+    }
+
+    /**
+     * Whether the order has a payment that is genuinely in flight AND still within the grace window
+     * ({@see self::$pending_payment_grace_mins}). Used to hide the "pay again" action so the customer
+     * can't start a duplicate payment while one is processing. Only the in-flight purchase states
+     * count (not pending refund/void). Beyond the grace window a pending payment no longer blocks, so
+     * an abandoned/stuck payment never permanently locks the order out of a retry.
+     *
+     * @return bool
+     */
+    public function hasFreshPendingPayment(): bool
+    {
+        // Feature is opt-in: when off, never gate — behave exactly like stock SilverShop.
+        if (!$this->owner->config()->get('manage_pending_payments')) {
+            return false;
+        }
+
+        if (!$this->owner->isInDB() || !$this->owner->hasMethod('HasPendingPayments') || !$this->owner->HasPendingPayments()) {
+            return false;
+        }
+
+        $graceMins = (int) $this->owner->config()->get('pending_payment_grace_mins');
+
+        $query = Payment::get()->filter([
+            'OrderID' => $this->owner->ID,
+            'Status' => ['PendingAuthorization', 'PendingPurchase', 'PendingCapture'],
+        ]);
+
+        // 0 or negative → block for the whole pending duration (no time window).
+        if ($graceMins > 0) {
+            $cutoff = date('Y-m-d H:i:s', DBDatetime::now()->getTimestamp() - $graceMins * 60);
+            $query = $query->filter('Created:GreaterThan', $cutoff);
+        }
+
+        return $query->count() > 0;
     }
 
     /**
@@ -263,6 +348,33 @@ class OrderExtension extends Extension{
     public function onPlaceOrder()
     {
         $this->freezeItemTaxes();
+        $this->maybeAssignInvoiceOnPlacement();
+    }
+
+    /**
+     * Assign the invoice number already at placement (Cart→Unpaid) when the chosen payment tile
+     * ({@see \ShopExtensions\Model\PaymentOption}) is flagged InvoiceOnPlacement — used for
+     * "on account"/bank transfer (esp. B2B), where the customer needs the number to reference the
+     * transfer. Only the fields are set here (no write): OrderProcessor::placeOrder() writes the
+     * order right after onPlaceOrder, so the number persists. Instant methods (card/iDEAL/SEPA)
+     * leave the flag unset → number still only on Paid, so aborted payments never burn a number.
+     */
+    protected function maybeAssignInvoiceOnPlacement(): void
+    {
+        if ($this->owner->InvoiceNumber) {
+            return;
+        }
+        if (!$this->owner->hasMethod('UsedPaymentOption')) {
+            return;
+        }
+        $option = $this->owner->UsedPaymentOption();
+        if (!$option || !$option->exists() || !$option->InvoiceOnPlacement) {
+            return;
+        }
+        if (!$this->shouldIssueInvoice()) {
+            return;
+        }
+        $this->assignInvoiceNumber();
     }
 
     /**
@@ -736,7 +848,7 @@ class OrderExtension extends Extension{
     public function requiresShipping()
     {
         $items = $this->owner->Items();
-        
+
         if (!$items || $items->count() === 0) {
             // Default to true if no items yet (during initial checkout)
             return true;

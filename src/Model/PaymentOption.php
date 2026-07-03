@@ -41,6 +41,13 @@ class PaymentOption extends DataObject
         'Title' => 'Varchar(255)',
         'Sort' => 'Int',
         'Enabled' => 'Boolean(1)',
+        // Whether an order using this tile gets its invoice number already at placement
+        // (Cart→Unpaid), not only at Paid. Meant for "on account"/bank transfer (esp. B2B),
+        // where the customer needs the invoice number to reference the payment. Instant methods
+        // (card, iDEAL) stay unset → number only on Paid, so an aborted order never burns a
+        // number. An option flagged here is "number-bearing" and is therefore excluded from the
+        // automatic stale-Unpaid cancellation ({@see \ShopExtensions\Tasks\CancelStaleUnpaidOrdersTask}).
+        'InvoiceOnPlacement' => 'Boolean(0)',
     ];
 
     private static $has_one = [
@@ -89,6 +96,15 @@ class PaymentOption extends DataObject
         if ($image = $fields->dataFieldByName('Image')) {
             $image->setTitle('Icon')->setDescription('Optionales Icon/Logo der Zahlart.');
         }
+
+        $fields->dataFieldByName('InvoiceOnPlacement')
+            ->setTitle('Rechnungsnummer schon bei Bestellung vergeben')
+            ->setDescription('Für „auf Rechnung"/Überweisung (v. a. B2B): die Rechnungsnummer wird bereits '
+                . 'bei der Bestellung (Platzierung) vergeben, damit der Kunde referenziert überweisen kann. '
+                . 'Für Sofort-Zahlarten (Kreditkarte, iDEAL, SEPA) leer lassen – dort entsteht die Nummer erst '
+                . 'bei bezahlter Bestellung, damit abgebrochene Zahlungen keine Nummer verbrauchen. '
+                . 'Achtung: so markierte Zahlarten werden vom automatischen Storno liegengebliebener '
+                . 'Bestellungen ausgenommen (gehören ins Mahnwesen).');
 
         return $fields;
     }

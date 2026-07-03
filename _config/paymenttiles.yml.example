@@ -29,6 +29,20 @@ Silverstripe\SiteConfig\SiteConfig:
 ShopExtensions\SiteConfigPaymentTilesExtension:
   enabled: true
 
+# 3) Wieder-Bezahlen im Kundenkonto mit denselben Kacheln.
+#    Zahlt der Kunde eine offene (Unpaid) Bestellung aus seinem Konto erneut, sieht er dieselben
+#    Kacheln (inkl. SEPA/iDEAL/Kreditkarte) statt der rohen Gateway-Radioliste. Die Extension
+#    tauscht das Zahlart-Feld; die Injector-Subclass löst die gewählte Kachel auf, setzt
+#    Order.UsedPaymentOptionID (→ Mollie-Untermethode wird durchgereicht) und startet die Zahlung.
+#    Fällt automatisch auf die Standardliste zurück, wenn keine aktive Zahlart gepflegt ist.
+SilverShop\Forms\OrderActionsForm:
+  extensions:
+    - ShopExtensions\OrderActionsFormExtension
+
+SilverStripe\Core\Injector\Injector:
+  SilverShop\Forms\OrderActionsForm:
+    class: ShopExtensions\Forms\OrderActionsForm
+
 # Danach unter Einstellungen → Shop → Zahlarten die Kacheln anlegen, z. B.:
 #   Titel "Kreditkarte", Gateway "Mollie", Methoden-Code "creditcard", Icon hochladen
 #   Titel "PayPal",      Gateway "Mollie", Methoden-Code "paypal"

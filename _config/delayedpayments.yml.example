@@ -1,0 +1,58 @@
+# =============================================================================
+# Opt-in: Verzögerte Zahlungen (SEPA/async) & Auto-Storno liegengebliebener Bestellungen
+#
+# Zweck: SEPA-Lastschrift (und andere asynchrone Mollie-Methoden) werden nicht im
+# Browser-Rücksprung bestätigt, sondern Tage später per Webhook (Server-zu-Server).
+# Damit solche Bestellungen nicht verloren gehen, wird die Order beim Klick auf
+# „Zahlen" platziert (Unpaid), BEVOR eine Zahlung passiert. Liegengebliebene,
+# nummernlose Unpaid-Orders räumt ein Cron-Task nach einer Karenzzeit auf.
+#
+# Kopieren nach z. B. app/_config/delayedpayments.yml und aktivieren.
+# Danach: vendor/bin/sake dev/build flush=1
+# =============================================================================
+---
+Name: shopextensions-delayedpayments
+After: '#shopextensions'
+---
+
+# 1) Order verlässlich platzieren, BEVOR gezahlt wird.
+#    Die Order wird beim Klick auf „Zahlen" als Unpaid-Datensatz angelegt (nicht als
+#    flüchtiger Cart). CartCleanupTask (löscht nur Status='Cart') fasst platzierte
+#    Unpaid-Orders nicht an → keine „Order komplett weg"-Verluste bei SEPA/async.
+#    Abgebrochene Mollie/Karten-Zahlungen bleiben nummernlos → verbrennen keine Rechnungsnummer.
+# 1b) Pending-/Doppelzahlungs-Handhabe (opt-in, empfohlen wenn SEPA/async aktiv ist).
+#     Versteckt das „erneut bezahlen"-Formular, solange eine Zahlung frisch läuft (Grace-Fenster),
+#     zeigt einen „Zahlung wird verarbeitet"-Hinweis, sichert die Repay-Action idempotent ab und
+#     gleicht tatsächlich doppelte Zahlungen ab (Order-Flag + Admin-Mail; optional Auto-Refund).
+#     Ohne dieses Flag verhält sich alles wie im Standard-SilverShop.
+SilverShop\Model\Order:
+  place_before_payment: true
+  manage_pending_payments: true
+  pending_payment_grace_mins: 5   # Fenster (Min); 0 = für gesamte pending-Dauer sperren
+
+# Optionaler Auto-Ausgleich (Geldbewegung!) statt nur Flag + Admin-Mail:
+# SilverStripe\Omnipay\Model\Payment:
+#   auto_refund_duplicate: false        # true = Duplikat automatisch via omnipay erstatten
+#   duplicate_alert_email: ''           # Empfänger der Doppelzahlungs-Warnung (sonst AdminNotificationMail)
+
+# 2) Mollie async-Notification aktivieren (Voraussetzung Unpaid→Paid bei SEPA).
+#    Gilt pro Gateway, deckt damit ALLE Mollie-Untermethoden ab (der reale Zahlungsstatus
+#    entscheidet automatisch instant vs. verzögert). WICHTIG: Die von silverstripe-omnipay
+#    registrierte Notify-URL (PaymentGatewayController-Route) muss öffentlich erreichbar sein
+#    (Produktion ok; lokal per Tunnel/ngrok), sonst kommt die SEPA-Bestätigung nie an.
+SilverStripe\Omnipay\GatewayInfo:
+  Mollie:
+    use_async_notification: true
+
+# 3) Auto-Storno-Task für liegengebliebene Unpaid-Orders.
+#    Karenzzeit in Tagen (Default 14). Der Task storniert NUR nummernlose Unpaid-Orders
+#    (reine Mollie/Karten-Abbrecher) → er kann nie eine Nummernlücke erzeugen. Nummerntragende
+#    Orders (Manual/„auf Rechnung" bzw. Kacheln mit InvoiceOnPlacement) bleiben unberührt und
+#    gehören ins manuelle Mahnwesen. Aktion: Status → MemberCancelled (löst KEIN Storno aus,
+#    Datensatz bleibt erhalten) + Hinweis-Mail an den Kunden. Reversibel: trifft der Webhook
+#    später ein, heilt onCaptured() die Order zurück auf Paid.
+ShopExtensions\Tasks\CancelStaleUnpaidOrdersTask:
+  cancel_after_days: 14
+
+# Als Cron einrichten (z. B. täglich):
+#   vendor/bin/sake dev/tasks/cancel-stale-unpaid-orders
