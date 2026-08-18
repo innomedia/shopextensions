@@ -23,7 +23,7 @@ use SilverStripe\Model\List\ArrayList;
  * the option itself on the order (Order.UsedPaymentOptionID). The sub-method code is later
  * forwarded to the provider by {@see \ShopExtensions\ExtendedPurchaseService}.
  *
- * Only wired in when the feature flag is set (see CustomCheckoutComponentConfig).
+ * Only wired in when the feature flag is set (see ShopCheckoutComponentConfig).
  */
 class PaymentMethodComponent extends Payment
 {

@@ -188,7 +188,7 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
             ->setSubject($subject)
             ->setFrom(
                 $siteConfig->AdminEmail ?: Email::config()->admin_email,
-                $siteConfig->AdminName ?: null
+                $siteConfig->AdminName ?: ''
             );
 
         if (self::shouldAttachInvoice('admin_notification')) {

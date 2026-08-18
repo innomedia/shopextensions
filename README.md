@@ -19,9 +19,12 @@ preview restricted to the owning member or a CMS user) and, for customers, by
 `Order.issue_invoice_for_zero_total` is enabled. Also provides `getDescription()`, which is
 **required** by payment gateways such as Mollie/PayPal.
 
-**Checkout usability** — `CheckoutPageControllerExtension` + `CustomCheckoutComponentConfig`
+**Checkout usability** — `CheckoutPageControllerExtension` + `Checkout\ShopCheckoutComponentConfig`
 swap in a cleaner checkout form (CompositeFields flattened, shipping address hidden when nothing
-ships, zero-total redirect fixed). `AddressExtension` localises country names and adds
+ships, zero-total redirect fixed). Projects that need extra checkout fields subclass
+`ShopCheckoutComponentConfig`, override `addProjectComponents()` (runs between Notes and Terms)
+and point `CheckoutPageControllerExtension.checkout_component_config_class` at their own class —
+project-specific components never live in this module. `AddressExtension` localises country names and adds
 Company/Name fields. `AjaxCartController` / `ShoppingCartControllerExtension` /
 `ProductControllerExtension` power the AJAX mini-cart and live variant prices.
 

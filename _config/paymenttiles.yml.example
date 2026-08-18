@@ -18,7 +18,7 @@ After: '#shopextensions'
 # 1) Feature einschalten: Tile-Component statt Standard-Gateway-Radioliste.
 #    Die Kacheln werden nur angezeigt, wenn mindestens eine aktive Zahlart gepflegt ist,
 #    sonst bleibt automatisch das Standardverhalten aktiv (Fallback).
-ShopExtensions\CustomCheckoutComponentConfig:
+ShopExtensions\Checkout\ShopCheckoutComponentConfig:
   use_payment_tiles: true
 
 # 2) Verwaltung der Zahlarten (GridField „Zahlarten") im SiteConfig-„Shop"-Reiter.

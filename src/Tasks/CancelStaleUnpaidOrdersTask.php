@@ -123,7 +123,7 @@ class CancelStaleUnpaidOrdersTask extends BuildTask
             ->setHTMLTemplate('ShopExtensions/Email/CancelStaleUnpaidEmail')
             ->setTo($to)
             ->setSubject(sprintf('Ihre offene Bestellung %s wurde storniert', $order->Reference))
-            ->setFrom($from, $siteConfig->AdminName ?: null)
+            ->setFrom($from, $siteConfig->AdminName ?: '')
             ->setData([
                 'Order' => $order,
                 'SiteConfig' => $siteConfig,

@@ -174,7 +174,7 @@ class PaymentExtension extends Extension
         try {
             Email::create()
                 ->setTo($to)
-                ->setFrom($from, $siteConfig->AdminName ?: null)
+                ->setFrom($from, $siteConfig->AdminName ?: '')
                 ->setSubject(sprintf('Mögliche Doppelzahlung – Bestellung %s', $order->Reference))
                 ->setBody($body)
                 ->setData(['BaseURL' => Director::absoluteBaseURL()])
