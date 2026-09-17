@@ -22,6 +22,7 @@ use SilverStripe\Model\List\ArrayList;
 use SilverStripe\Omnipay\Model\Payment;
 use SilverStripe\ORM\FieldType\DBCurrency;
 use SilverStripe\ORM\FieldType\DBDatetime;
+use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\SiteConfig\SiteConfig;
 
 /**
@@ -558,19 +559,21 @@ class OrderExtension extends Extension{
     }
 
     /**
-     * Format an amount as a negated currency string with a clear leading minus, e.g. "-€59.50".
-     * Uses the configured currency symbol. Deliberately a minus rather than DBCurrency's accounting
-     * parentheses so a cancellation invoice reads unambiguously as negative.
+     * Format an amount as a negated currency string with a clear leading minus, e.g. "-59,50 €".
+     * The magnitude is rendered by the shop's Currency field (ShopCurrency::Nice(): symbol,
+     * position, decimal and thousand delimiters as configured), so the credit note uses the same
+     * notation as the invoice it reverses. Previously it hard-coded "-€59.50".
+     * Deliberately a minus rather than ShopCurrency's negative_value_format (accounting
+     * parentheses by default) so a cancellation invoice reads unambiguously as negative.
      *
      * @param mixed $amount Numeric amount (magnitude; the sign is forced negative unless it is 0).
      * @return string
      */
     public static function formatNegativeCurrency($amount): string
     {
-        $symbol = DBCurrency::config()->get('currency_symbol') ?: '€';
         $value = abs((float) $amount);
         $sign = $value > 0 ? '-' : '';
-        return $sign . $symbol . number_format($value, 2);
+        return $sign . DBField::create_field('Currency', $value)->Nice();
     }
 
     /**
