@@ -39,7 +39,7 @@
         <table>
             <tr>
                 <td><%t PDFReceipt.ORDERNUMBER 'Bestellnummer' %></td>
-                <td style="text-align: right;padding-left: 0.5cm">{$Order.ID}</td>
+                <td style="text-align: right;padding-left: 0.5cm">{$Order.Reference}</td>
             </tr>
             <tr>
                 <td><%t PDFReceipt.DATE 'Bestelldatum' %></td>
@@ -65,7 +65,7 @@
         <% if $Order.InvoiceNumber %>
             <h1 style="font-size: 12pt"><%t PDFReceipt.RECEIPT 'Rechnung' %> {$Order.InvoiceNumber}</h1>
         <% else %>
-            <h1 style="font-size: 12pt"><%t PDFReceipt.ORDER 'Bestellung' %> {$Order.ID}</h1>
+            <h1 style="font-size: 12pt"><%t PDFReceipt.ORDER 'Bestellung' %> {$Order.Reference}</h1>
         <% end_if %>
         <% with $Order %>
             <table class="infotable ordercontent" style="width: 100%">
@@ -155,9 +155,9 @@
                     <% loop $Payments %>
                     <tr>
                         <td class="price">$Created.Nice</td>
-                        <td class="price">$Amount.Nice $Currency</td>
+                        <td class="price">$Amount.Nice</td>
                         <td class="price">$PaymentStatus</td>
-                        <td class="price">$GatewayTitle</td>
+                        <td class="price">$PaymentMethodTitle</td>
                     </tr>
                         <% if $ShowMessages %>
                             <% loop $Messages %>
@@ -182,7 +182,7 @@
         <table style="width: 100%">
             <tr>
                 <td style="padding-right: 0.5cm;color:#000000;text-align: center;">
-                    $SiteConfig.ReceiptFooter
+                    $SiteConfig.ReceiptFooterContent
                 </td>
             </tr>
         </table>

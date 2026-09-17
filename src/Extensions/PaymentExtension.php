@@ -5,6 +5,7 @@ namespace ShopExtensions;
 use Psr\Log\LoggerInterface;
 use SilverShop\Checkout\OrderEmailNotifier;
 use SilverShop\Checkout\OrderProcessor;
+use ShopExtensions\Model\PaymentOption;
 use SilverShop\Model\Order;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\Email\Email;
@@ -55,6 +56,36 @@ class PaymentExtension extends Extension
      * @var string
      */
     private static string $duplicate_alert_email = '';
+
+    /**
+     * Customer-facing name of the payment method, for invoices and mails.
+     *
+     * With payment tiles the shop names its methods itself (PaymentOption.Title, e.g. "Vorkasse /
+     * Überweisung"), while GatewayTitle only knows the gateway ("Manual" → a generic translation).
+     * Uses the tile the order was placed with when it belongs to this payment's gateway, otherwise
+     * the only enabled tile for the gateway, otherwise GatewayTitle.
+     */
+    public function PaymentMethodTitle(): string
+    {
+        $payment = $this->getOwner();
+
+        if (class_exists(PaymentOption::class)) {
+            $order = $payment->OrderID ? Order::get()->byID($payment->OrderID) : null;
+            if ($order && $order->hasMethod('UsedPaymentOption')) {
+                $option = $order->UsedPaymentOption();
+                if ($option && $option->exists() && $option->PaymentGateway === $payment->Gateway && $option->Title) {
+                    return (string) $option->Title;
+                }
+            }
+
+            $options = PaymentOption::get()->filter(['PaymentGateway' => $payment->Gateway, 'Enabled' => 1]);
+            if ($options->count() === 1 && $options->first()->Title) {
+                return (string) $options->first()->Title;
+            }
+        }
+
+        return (string) $payment->getGatewayTitle();
+    }
 
     public function onAuthorized(ServiceResponse $response): void
     {

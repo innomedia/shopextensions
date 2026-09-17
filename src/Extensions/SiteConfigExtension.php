@@ -12,6 +12,8 @@ use SilverStripe\Forms\HTMLEditor\HTMLEditorField;
 use SilverStripe\Forms\NumericField;
 use SilverStripe\Forms\TextareaField;
 use SilverStripe\Forms\TextField;
+use SilverStripe\ORM\FieldType\DBField;
+use SilverStripe\ORM\FieldType\DBHTMLText;
 
 /**
  * SiteConfig extension that adds shop-related global settings: receipt logo,
@@ -222,6 +224,26 @@ class SiteConfigExtension extends Extension
 
         $mime = $resized->getMimeType() ?: 'image/png';
         return 'data:' . $mime . ';base64,' . base64_encode($data);
+    }
+
+    /**
+     * Footer of the PDF documents (invoice, cancellation invoice, delivery slip).
+     *
+     * ReceiptFooter is the field meant for it (bank details, VAT ID, register). When it is empty,
+     * the footer falls back to HintAfterPayment, which shops fill with the bank details for bank
+     * transfer orders. Without the fallback such shops printed invoices with an empty footer and
+     * no bank details at all. Empty editor markup ("<p></p>") counts as empty.
+     */
+    public function ReceiptFooterContent(): ?DBHTMLText
+    {
+        foreach (['ReceiptFooter', 'HintAfterPayment'] as $field) {
+            $value = (string) $this->owner->getField($field);
+            if (trim(strip_tags($value, '<img>')) !== '') {
+                return DBField::create_field('HTMLText', $value);
+            }
+        }
+
+        return null;
     }
 
     /**

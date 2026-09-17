@@ -165,7 +165,7 @@ Zu finden unter **Einstellungen → Shop** (silvershop-Reiter), Untertabs *Rechn
 
 | Feld | Tab | Pflicht? | Wirkung / wo sichtbar |
 |---|---|---|---|
-| `ReceiptFooter` | Rechnung & Belege | **Pflicht¹** | Fußzeile auf Rechnung/Lieferschein – Bankverbindung, USt-IdNr., Handelsregister, ggf. Kleinunternehmer-Hinweis. Rechtlich relevant. |
+| `ReceiptFooter` | Rechnung & Belege | **Pflicht¹** | Fußzeile auf Rechnung/Lieferschein – Bankverbindung, USt-IdNr., Handelsregister, ggf. Kleinunternehmer-Hinweis. Rechtlich relevant. Leer → die Belege zeigen `HintAfterPayment` (`$SiteConfig.ReceiptFooterContent`). |
 | `ReceiptLogo` | Rechnung & Belege | Optional | Logo oben auf den PDF-Belegen. |
 | `ReceiptHeader` | Rechnung & Belege | Optional | Einzeilige Absenderangabe über der Empfängeradresse. |
 | `ReceiptPhone` | Rechnung & Belege | Optional | Telefon in der Signatur der Status-Mails (und optional auf Belegen). |

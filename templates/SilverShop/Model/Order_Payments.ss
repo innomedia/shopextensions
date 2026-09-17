@@ -14,9 +14,9 @@
         <% loop $Payments %>
             <tr>
                 <td class="price">$Created.Nice</td>
-                <td class="price">$Amount.Nice $Currency</td>
+                <td class="price">$Amount.Nice</td>
                 <td class="price">$PaymentStatus</td>
-                <td class="price">$GatewayTitle</td>
+                <td class="price">$PaymentMethodTitle</td>
             </tr>
             <% if $ShowMessages %>
                 <% loop $Messages %>

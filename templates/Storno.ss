@@ -23,7 +23,7 @@
         <table>
             <tr>
                 <td><%t PDFReceipt.ORDERNUMBER 'Bestellnummer' %></td>
-                <td style="text-align: right;padding-left: 0.5cm">{$Order.ID}</td>
+                <td style="text-align: right;padding-left: 0.5cm">{$Order.Reference}</td>
             </tr>
             <% if $Order.InvoiceNumber %>
                 <tr>
@@ -118,7 +118,7 @@
         <table style="width: 100%">
             <tr>
                 <td style="padding-right: 0.5cm;color:#000000;text-align: center;">
-                    $SiteConfig.ReceiptFooter
+                    $SiteConfig.ReceiptFooterContent
                 </td>
             </tr>
         </table>

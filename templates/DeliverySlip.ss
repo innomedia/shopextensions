@@ -80,7 +80,7 @@
         <table style="width: 100%">
             <tr>
                 <td style="padding-right: 0.5cm;color:#000000;text-align: center;">
-                    $SiteConfig.ReceiptFooter
+                    $SiteConfig.ReceiptFooterContent
                 </td>
             </tr>
         </table>

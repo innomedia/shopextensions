@@ -51,7 +51,7 @@
                             <% loop $Order.Payments %>
                                 <tr>
                                     <td>
-                                        $Created.Nice &middot; $GatewayTitle &middot; $PaymentStatus<br />
+                                        $Created.Nice &middot; $PaymentMethodTitle &middot; $PaymentStatus<br />
                                         Nr. $ID<% if $TransactionReference %> &middot; $TransactionReference<% end_if %>
                                         <% if $Top.Payment && $ID == $Top.Payment.ID %><br /><strong><%t ShopExtensions\Email.DuplicatePaymentThisOne 'Diese Zahlung ist zu viel.' %></strong><% end_if %>
                                     </td>
