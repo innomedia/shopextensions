@@ -13,6 +13,7 @@ use SilverShop\Checkout\Component\Terms;
 use SilverShop\Checkout\Checkout;
 use SilverShop\Model\Order;
 use ShopExtensions\Model\PaymentOption;
+use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Omnipay\GatewayInfo;
 use SilverStripe\Security\Security;
 
@@ -32,6 +33,10 @@ use SilverStripe\Security\Security;
  */
 class ShopCheckoutComponentConfig extends CheckoutComponentConfig
 {
+    // SilverShop's CheckoutComponentConfig only uses Injectable, but the constructor below reads
+    // its flags via $this->config() — without this trait every checkout request is fatal.
+    use Configurable;
+
     /**
      * When true, the checkout offers the configurable payment tiles
      * ({@see \ShopExtensions\Checkout\PaymentMethodComponent}) instead of SilverShop's plain

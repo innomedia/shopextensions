@@ -103,6 +103,11 @@ class PaymentMethodComponent extends Payment
     }
 
     /**
+     * Errors carry the field name both as field and as message code. The second argument of
+     * ValidationResult::addError() is the message TYPE, not the field. SilverShop's
+     * CheckoutComponentConfig::validateData() keeps only the (namespaced) code, so the code is
+     * what lets a form validator put the message back at the tile field.
+     *
      * @param Order $order
      * @param array $data
      * @return bool
@@ -112,7 +117,12 @@ class PaymentMethodComponent extends Payment
         $result = ValidationResult::create();
 
         if (empty($data['PaymentMethod'])) {
-            $result->addError(_t(__CLASS__ . '.NoPaymentMethod', 'Bitte wählen Sie eine Zahlart.'), 'PaymentMethod');
+            $result->addFieldError(
+                'PaymentMethod',
+                _t(__CLASS__ . '.NoPaymentMethod', 'Bitte wählen Sie eine Zahlart.'),
+                ValidationResult::TYPE_ERROR,
+                'PaymentMethod'
+            );
             throw ValidationException::create($result);
         }
 
@@ -120,7 +130,12 @@ class PaymentMethodComponent extends Payment
         $supported = GatewayInfo::getSupportedGateways();
 
         if (!$option || !$option->canUse() || !isset($supported[$option->PaymentGateway])) {
-            $result->addError(_t(__CLASS__ . '.InvalidPaymentMethod', 'Die gewählte Zahlart ist nicht verfügbar.'), 'PaymentMethod');
+            $result->addFieldError(
+                'PaymentMethod',
+                _t(__CLASS__ . '.InvalidPaymentMethod', 'Die gewählte Zahlart ist nicht verfügbar.'),
+                ValidationResult::TYPE_ERROR,
+                'PaymentMethod'
+            );
             throw ValidationException::create($result);
         }
 
