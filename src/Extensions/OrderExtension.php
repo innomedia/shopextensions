@@ -628,11 +628,10 @@ class OrderExtension extends Extension{
      */
     public function onStatusChange($fromStatus, $toStatus)
     {
-        $payment = '';
-        $payments = Payment::get()->filter('OrderID', $this->owner->ID)->sort('ID', 'ASC');
-        if (count($payments) > 0) {
-            $payment = $payments->last();
-        }
+        // null (not '') when the order has no payment yet, e.g. an admin setting the status to
+        // Paid by hand: reading ->Gateway on a string raised a warning that dev mode turns into an
+        // exception, which aborted the status change.
+        $payment = Payment::get()->filter('OrderID', $this->owner->ID)->sort('ID', 'ASC')->last();
 
         // Fallback only: at the normal Cart→Unpaid placement the Payment does not exist yet, so
         // $payment->Gateway is empty and this branch does not fire. The real assignment for Manual
@@ -648,7 +647,7 @@ class OrderExtension extends Extension{
             $this->stampStornoDate();
         }
 
-        if ($toStatus == 'Paid' && in_array($payment->Gateway, ['Stripe', 'PayPal_Express', 'PayPal_Pro', 'Mollie','Manual'])  ) {
+        if ($toStatus == 'Paid' && $payment && in_array($payment->Gateway, ['Stripe', 'PayPal_Express', 'PayPal_Pro', 'Mollie','Manual'])  ) {
             $this->owner->Paid = DBDatetime::now()->Rfc2822();
             foreach ($this->owner->Items() as $item) {
                 $item->onPlacement();
