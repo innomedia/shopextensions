@@ -131,7 +131,7 @@ Silverstripe\SiteConfig\SiteConfig:
 #     - InvoiceNumberStart
 
 # NOTE: We deliberately do NOT override the SilverShop\Checkout\CheckoutComponentConfig
-# service here. The checkout order form already builds CustomCheckoutComponentConfig
+# service here. The checkout order form already builds its own config class
 # explicitly in CheckoutPageControllerExtension::updateOrderForm(), so the override was
 # redundant. Worse, it made EVERY base CheckoutComponentConfig::create() consumer (the
 # discounts CouponForm, the multi-step checkout steps, ...) receive the full checkout

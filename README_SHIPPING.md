@@ -77,7 +77,7 @@ If a cart contains both digital and physical products:
 
 - `ProductExtension.php` - Adds `requiresShipping()` method to products
 - `OrderExtension.php` - Adds `requiresShipping()` method to orders (checks all items)
-- `CustomCheckoutComponentConfig.php` - Conditionally includes ShippingAddress component
+- `Checkout/ShopCheckoutComponentConfig.php` - Conditionally includes ShippingAddress component
 
 ### Default Values
 

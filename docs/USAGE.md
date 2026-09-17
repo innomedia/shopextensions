@@ -108,10 +108,22 @@ YAML mit `After: '#shopextensions'`.
 | `use_queued_jobs` | `true` | `true`: Mails laufen über einen QueuedJob (blockiert den Checkout nicht). `false`: direkter Versand (Debug). |
 | `send_statuschanges` | `true` | `false`: Status-Änderungs-Mails an Kunden werden unterdrückt. |
 | `attach_invoice_to_receipt` | `true` | Rechnungs-PDF an die **Beleg-Mail** (Kunde) anhängen. |
-| `attach_invoice_to_admin` | `true` | Rechnungs-PDF an die **Admin-Benachrichtigung** anhängen. |
+| `attach_invoice_to_admin` | `true` | Beleg an die **Admin-Benachrichtigung** anhängen: mit `Order.enable_delivery_slip` der Lieferschein („Lieferschein <Bestellnr>.pdf"), sonst die Rechnung („Rechnung <Rechnungsnr>.pdf"); ohne Rechnungsnummer kein Anhang. |
 | `attach_invoice_to_confirmation` | `false` | Rechnungs-PDF an die **Bestätigungs-Mail** anhängen. |
+| `attach_storno_to_status_change` | `true` | Stornorechnung (`Order.enable_storno`) an die Statusmail einer vom Admin stornierten Bestellung anhängen (nur Queued-Versand). |
 
-> Anhang-Logik = `sendReceipt` **UND** das jeweilige `attach_invoice_to_*`-Flag.
+> Anhang-Logik = `SiteConfig.SendReceiptEmail` **UND** das jeweilige Flag.
+
+**Mailvorlagen (im Theme überschreibbar):** `SilverShop/Model/Order_CancelNotificationEmail`
+(Kunde storniert im Konto → Betreiber; Empfänger wie Admin-Benachrichtigung:
+`SiteConfig.AdminNotificationMail` → `Email.shop_adminemail` → `Email.admin_email`),
+`ShopExtensions/Email/DuplicatePaymentEmail` (Doppelzahlung → Betreiber),
+`ShopExtensions/Email/CancelStaleUnpaidEmail`.
+Betreffe per Sprachdatei: `ShopExtensions\Email.CancelStaleSubject` (`{ref}`),
+`ShopExtensions\Email.DuplicatePaymentSubject` (`{ref}`).
+
+**Negative Beträge:** Das Modul setzt `SilverShop\ORM\FieldType\ShopCurrency.negative_value_format`
+auf `<span class="negative">-%s</span>` („-50,00 €" statt „(50,00 €)"); projektseitig überschreibbar.
 
 ### `ShopExtensions\CustomTaxModifier`
 | Variable | Default | Bedeutung |
@@ -136,8 +148,12 @@ YAML mit `After: '#shopextensions'`.
 | `SilverShop\Model\Order.issue_invoice_for_zero_total` | `false` | Ob 0,00 €-Bestellungen eine Rechnung bekommen (Nummer + Beleg-PDF + Beleg-Mail). Default `false` = kostenlose Bestellungen erhalten **keine** Rechnung und verbrauchen keine Nummer. Auf `true` setzen, um 0 €-Bestellungen wie bezahlte zu behandeln. |
 | `SilverShop\Model\Order.enable_delivery_slip` | `false` | Lieferschein-Feature (CMS-Button + Route `/OrderReceipt/StreamDeliverySlip/<ID>`). Default aus (opt-in) — reine Digital-/Seminar-Shops brauchen es nicht. Aktivieren via `deliveryslip.yml.example`. Der Lieferschein zeigt nur Artikel + Menge; Template `DeliverySlip.ss` ist projektseitig überschreibbar. |
 
-**Injector-Overrides** (setzt das Modul automatisch): `CheckoutComponentConfig` →
-`CustomCheckoutComponentConfig`, `OrderEmailNotifier` → `CustomOrderEmailNotifier`.
+**Injector-Overrides** (setzt das Modul automatisch): `OrderEmailNotifier` →
+`CustomOrderEmailNotifier`. `CheckoutComponentConfig` wird bewusst **nicht** überschrieben: das
+Bestellformular baut die Klasse aus `CheckoutPageControllerExtension.checkout_component_config_class`
+(Default `ShopExtensions\Checkout\ShopCheckoutComponentConfig`). Eigene Komponenten: Unterklasse
+bilden, `addProjectComponents()` überschreiben und diese Config auf die Unterklasse setzen.
+`ShopExtensions\CustomCheckoutComponentConfig` gibt es nicht mehr.
 
 ---
 
@@ -328,7 +344,7 @@ kein AJAX-/Session-Seitenkanal.
 ### 8.1 Aktivierung
 ```yaml
 # app/_config/paymenttiles.yml  (aus paymenttiles.yml.example)
-ShopExtensions\CustomCheckoutComponentConfig:
+ShopExtensions\Checkout\ShopCheckoutComponentConfig:
   use_payment_tiles: true
 
 Silverstripe\SiteConfig\SiteConfig:
@@ -353,7 +369,7 @@ Code setzte fälschlich `paymentType` aus `$_SESSION` und reichte damit nichts d
 ### 8.4 Config-Referenz
 | Variable | Default | Bedeutung |
 |---|---|---|
-| `CustomCheckoutComponentConfig.use_payment_tiles` | `false` | Tile-Component statt Standard-Gateway-Radioliste. |
+| `ShopCheckoutComponentConfig.use_payment_tiles` | `false` | Tile-Component statt Standard-Gateway-Radioliste. |
 | `SiteConfigPaymentTilesExtension.enabled` | `false` | Zeigt den „Zahlarten"-Reiter (GridField) im Shop-Reiter. |
 | `PaymentOption` (DataObject) | — | `PaymentGateway`, `PaymentMethod`, `Title`, `Sort`, `Enabled`, `Image`. |
 
