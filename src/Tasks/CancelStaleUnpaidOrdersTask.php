@@ -122,7 +122,14 @@ class CancelStaleUnpaidOrdersTask extends BuildTask
         $email = Email::create()
             ->setHTMLTemplate('ShopExtensions/Email/CancelStaleUnpaidEmail')
             ->setTo($to)
-            ->setSubject(sprintf('Ihre offene Bestellung %s wurde storniert', $order->Reference))
+            // Translatable so projects addressing customers informally (Du) can override the
+            // subject in their lang file, matching their own CancelStaleUnpaidEmail template.
+            ->setSubject(_t(
+                'ShopExtensions\\Email.CancelStaleSubject',
+                'Ihre offene Bestellung {ref} wurde storniert',
+                '',
+                ['ref' => $order->Reference]
+            ))
             ->setFrom($from, $siteConfig->AdminName ?: '')
             ->setData([
                 'Order' => $order,
