@@ -3,6 +3,8 @@
 namespace ShopExtensions;
 
 use Psr\Log\LoggerInterface;
+use SilverShop\Checkout\OrderEmailNotifier;
+use SilverShop\Checkout\OrderProcessor;
 use SilverShop\Model\Order;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\Email\Email;
@@ -17,9 +19,10 @@ use SilverStripe\SiteConfig\SiteConfig;
 /**
  * Extension for the omnipay Payment model.
  *
- * Two responsibilities:
+ * Responsibilities:
  *  1. Assign the order's invoice number as soon as a Manual ("Rechnung"/invoice) payment is
- *     authorized or captured (see {@see self::assignManualInvoiceNumber()}).
+ *     authorized or captured (see {@see self::assignManualInvoiceNumber()}), and optionally send
+ *     the confirmation mails for it (see {@see self::sendManualPaymentConfirmation()}).
  *  2. Reconcile DUPLICATE payments on capture: when a payment settles on an order that is already
  *     fully covered by another payment, flag it (and optionally auto-refund). This is the real
  *     safety net against SEPA double payments — a customer can legitimately switch SEPA→card, and
@@ -56,6 +59,7 @@ class PaymentExtension extends Extension
     public function onAuthorized(ServiceResponse $response): void
     {
         $this->assignManualInvoiceNumber();
+        $this->sendManualPaymentConfirmation();
     }
 
     public function onCaptured(ServiceResponse $response): void
@@ -88,6 +92,58 @@ class PaymentExtension extends Extension
         }
 
         $order->ensureInvoiceNumber();
+    }
+
+    /**
+     * Opt-in ({@see CustomOrderEmailNotifier::$send_confirmation_for_manual_payment}): send the order
+     * confirmation to the customer and the new-order notification to the operator as soon as an
+     * order is placed with a Manual gateway (Vorkasse / bank transfer / invoice).
+     *
+     * Without it such an order hears nothing until an admin sets it to Paid, because this module
+     * sends its mails from Order::onStatusChange(→ Paid) and projects keep
+     * OrderProcessor.send_confirmation off so card/PayPal orders don't get a confirmation AND a
+     * receipt. The customer then never sees the bank details and the operator is not told that a
+     * transfer is due.
+     *
+     * Runs after silvershop's PaymentExtension::onAuthorized() (order placed, Cart → Unpaid) and after
+     * the invoice number was assigned, so the confirmation can already carry it. Skipped when
+     * silvershop itself is configured to send the mail (no duplicates), when the order is not Unpaid
+     * or already has a receipt, and when an earlier Manual payment of the same order was authorized
+     * (paying again from the account must not resend the confirmation).
+     */
+    protected function sendManualPaymentConfirmation(): void
+    {
+        if (!CustomOrderEmailNotifier::config()->get('send_confirmation_for_manual_payment')) {
+            return;
+        }
+
+        $payment = $this->getOwner();
+        if (!$payment->OrderID || !GatewayInfo::isManual($payment->Gateway)) {
+            return;
+        }
+
+        $order = Order::get()->byID($payment->OrderID);
+        if (!$order || $order->Status !== 'Unpaid' || $order->ReceiptSent) {
+            return;
+        }
+
+        foreach ($order->Payments()->exclude('ID', $payment->ID) as $sibling) {
+            if (GatewayInfo::isManual($sibling->Gateway)
+                && in_array($sibling->Status, ['Authorized', 'Captured'], true)
+            ) {
+                return;
+            }
+        }
+
+        $processorConfig = OrderProcessor::config();
+        $notifier = OrderEmailNotifier::create($order);
+
+        if (!$processorConfig->get('send_confirmation')) {
+            $notifier->sendConfirmation();
+        }
+        if (!$processorConfig->get('send_admin_notification')) {
+            $notifier->sendAdminNotification();
+        }
     }
 
     /**

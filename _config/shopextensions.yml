@@ -12,6 +12,9 @@ ShopExtensions\CustomOrderEmailNotifier:
   use_queued_jobs: true
   # Set to false to disable status change emails
   send_statuschanges: true
+  # Vorkasse/bank transfer (Manual gateway): send confirmation + admin notification when the
+  # order is placed, not only when it becomes Paid
+  send_confirmation_for_manual_payment: false
   # Per-mail-type control of the invoice PDF attachment.
   # These act on top of the SiteConfig.SendReceiptEmail master switch.
   attach_invoice_to_receipt: true

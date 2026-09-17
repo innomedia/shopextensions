@@ -107,6 +107,7 @@ YAML mit `After: '#shopextensions'`.
 |---|---|---|
 | `use_queued_jobs` | `true` | `true`: Mails laufen über einen QueuedJob (blockiert den Checkout nicht). `false`: direkter Versand (Debug). |
 | `send_statuschanges` | `true` | `false`: Status-Änderungs-Mails an Kunden werden unterdrückt. |
+| `send_confirmation_for_manual_payment` | `false` | `true`: Bei Manual-Zahlarten (Vorkasse/Überweisung) gehen Bestellbestätigung und Admin-Benachrichtigung schon bei Bestellabschluss raus, nicht erst bei „Bezahlt“. Übersprungen, wenn `OrderProcessor.send_confirmation`/`send_admin_notification` die Mail ohnehin schickt. |
 | `attach_invoice_to_receipt` | `true` | Rechnungs-PDF an die **Beleg-Mail** (Kunde) anhängen. |
 | `attach_invoice_to_admin` | `true` | Beleg an die **Admin-Benachrichtigung** anhängen: mit `Order.enable_delivery_slip` der Lieferschein („Lieferschein <Bestellnr>.pdf"), sonst die Rechnung („Rechnung <Rechnungsnr>.pdf"); ohne Rechnungsnummer kein Anhang. |
 | `attach_invoice_to_confirmation` | `false` | Rechnungs-PDF an die **Bestätigungs-Mail** anhängen. |

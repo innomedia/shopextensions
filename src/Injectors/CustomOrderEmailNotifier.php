@@ -43,6 +43,14 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
     private static bool $send_statuschanges = true;
 
     /**
+     * Send the order confirmation (customer) and the new-order notification (operator) as soon as
+     * an order is placed with a Manual gateway (Vorkasse / bank transfer), instead of only when it
+     * becomes Paid. See {@see PaymentExtension::sendManualPaymentConfirmation()}.
+     * Default false keeps the previous behaviour.
+     */
+    private static bool $send_confirmation_for_manual_payment = false;
+
+    /**
      * Per-mail-type control of whether the invoice PDF is attached.
      * These act on top of the SiteConfig.SendReceiptEmail master switch, so a project
      * that never sets them keeps the previous behaviour (attach whenever SendReceiptEmail is on).
