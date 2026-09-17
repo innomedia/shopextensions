@@ -33,8 +33,9 @@ service URL and language into the gateway request and removes reserved params (a
 failure). 
 
 **Tax & shipping** — `CustomTaxModifier` supports inclusive/exclusive tax and per-product or
-static rates; `ProductExtension` adds the per-product tax field. `CustomShippingModifier` does
-weight/country-based shipping.
+static rates; `ProductExtension` adds the per-product tax field. `CustomShippingModifier` is a
+deprecated legacy calculator (session billing country, flat domestic rate, weight tiers abroad;
+rates configurable) that is not registered by default; new shops should use their own modifier.
 
 **Notifications** — `CustomOrderEmailNotifier` (Injector override) sends order emails through the
 `SendOrderEmailJob` queued job and attaches the invoice PDF; attachment is configurable per mail
