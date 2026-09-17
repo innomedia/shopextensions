@@ -2,6 +2,7 @@
 namespace ShopExtensions;
 
 use SilverShop\Model\Modifiers\Tax\Base;
+use SilverStripe\ORM\FieldType\DBField;
 
 /**
  * Order tax modifier for the German market.
@@ -160,13 +161,18 @@ class CustomTaxModifier extends Base
     }
 
     /**
-     * One value line per distinct rate with its tax total in euros.
+     * One value line per distinct rate with its tax total, formatted like every other amount of
+     * the shop (ShopCurrency::Nice(): symbol, position and delimiters as configured).
+     *
+     * Previously the raw comma-decimal string got '€' glued on ("47,58€", no space, no thousands
+     * separator) right next to "298,00 €" for subtotal and total.
      */
     public function CustomTableValue()
     {
         $html = "";
         foreach ($this->getTaxRates() as $rate) {
-            $html .= $this->getProductTaxTotalByTaxRate($rate) . '€' . "<br/>";
+            $amount = OrderExtension::parseLocalNumber($this->getProductTaxTotalByTaxRate($rate));
+            $html .= DBField::create_field('Currency', $amount)->Nice() . "<br/>";
         }
         return substr($html, 0, max(0, strlen($html) - 5));
     }
