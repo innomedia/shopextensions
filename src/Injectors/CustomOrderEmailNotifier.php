@@ -4,6 +4,7 @@ namespace ShopExtensions;
 
 use ShopExtensions\Jobs\SendOrderEmailJob;
 use SilverShop\Checkout\OrderEmailNotifier;
+use SilverShop\Model\Order;
 use SilverShop\Page\CheckoutPage;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\Email\Email;
@@ -76,6 +77,36 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
         }
 
         return (bool) self::config()->get($key);
+    }
+
+    /**
+     * The document attached to the operator's new-order notification, as [binary, file name] so
+     * the two cannot drift apart again. The attachment used to be named "Lieferschein <invoice
+     * number>.pdf" while it always contained PDFReceipt(), i.e. the invoice.
+     *
+     *  - delivery slips enabled (Order.enable_delivery_slip): the delivery slip,
+     *    "Lieferschein <order reference>.pdf" (DeliverySlip.ss is headed with the reference)
+     *  - otherwise the invoice, "Rechnung <invoice number>.pdf"
+     *  - no invoice number yet: nothing (same guard as the customer mails)
+     *
+     * @return array{0:string,1:string}|null
+     */
+    public static function adminNotificationDocument(Order $order): ?array
+    {
+        if ($order->config()->get('enable_delivery_slip')) {
+            $binary = $order->PDFDeliverySlip('binary');
+            if ($binary) {
+                return [$binary, 'Lieferschein ' . $order->Reference . '.pdf'];
+            }
+        }
+
+        if (!$order->InvoiceNumber()) {
+            return null;
+        }
+
+        $binary = $order->PDFReceipt('binary');
+
+        return $binary ? [$binary, 'Rechnung ' . $order->InvoiceNumber() . '.pdf'] : null;
     }
 
     /**
@@ -184,7 +215,6 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
             ['OrderNo' => $this->order->Reference]
         );
 
-        $filename = 'Lieferschein ' . $this->order->InvoiceNumber() . '.pdf';
         $to = self::adminNotificationRecipient();
 
         $siteConfig = SiteConfig::current_site_config();
@@ -198,8 +228,10 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
                 $siteConfig->AdminName ?: ''
             );
 
-        if (self::shouldAttachInvoice('admin_notification')) {
-            $email->addAttachmentFromData($this->order->PDFReceipt('binary'), $filename, 'application/pdf');
+        if (self::shouldAttachInvoice('admin_notification')
+            && ($document = self::adminNotificationDocument($this->order)) !== null
+        ) {
+            $email->addAttachmentFromData($document[0], $document[1], 'application/pdf');
         }
 
         $checkoutpage = CheckoutPage::get()->first();

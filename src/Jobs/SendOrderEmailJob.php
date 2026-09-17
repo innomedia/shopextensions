@@ -154,7 +154,6 @@ class SendOrderEmailJob extends AbstractQueuedJob
             ['OrderNo' => $order->Reference]
         );
 
-        $filename = 'Lieferschein ' . $order->InvoiceNumber() . '.pdf';
         $to = CustomOrderEmailNotifier::adminNotificationRecipient();
         $siteConfig = SiteConfig::current_site_config();
         $fromEmail = $siteConfig->AdminEmail ?: Email::config()->admin_email;
@@ -166,8 +165,10 @@ class SendOrderEmailJob extends AbstractQueuedJob
                 $fromEmail
             );
 
-        if (CustomOrderEmailNotifier::shouldAttachInvoice('admin_notification')) {
-            $email->addAttachmentFromData($order->PDFReceipt('binary'), $filename, 'application/pdf');
+        if (CustomOrderEmailNotifier::shouldAttachInvoice('admin_notification')
+            && ($document = CustomOrderEmailNotifier::adminNotificationDocument($order)) !== null
+        ) {
+            $email->addAttachmentFromData($document[0], $document[1], 'application/pdf');
         }
 
         $checkoutpage = CheckoutPage::get()->first();
