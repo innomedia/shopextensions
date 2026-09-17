@@ -21,6 +21,13 @@ ShopExtensions\CustomOrderEmailNotifier:
 SilverStripe\ORM\FieldType\DBCurrency:
   currency_symbol: '€'
 
+# Negative amounts (discount lines etc.) as "-50,00 €" instead of silvershop's accounting
+# parentheses "(50,00 €)", which German customers do not read as a deduction. Same sign as the
+# cancellation invoice (OrderExtension::formatNegativeCurrency()). Only affects display via
+# Nice(); the DATEV export does not read it. Projects can override this in their own config.
+SilverShop\ORM\FieldType\ShopCurrency:
+  negative_value_format: '<span class="negative">-%s</span>'
+
 # Configure tax calculation
 ShopExtensions\CustomTaxModifier:
   # Tax mode: 'inclusive' = tax included in prices (Enthaltene MwSt / inkl. MwSt)
