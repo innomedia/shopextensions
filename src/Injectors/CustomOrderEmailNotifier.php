@@ -52,10 +52,17 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
     private static bool $attach_invoice_to_confirmation = false;
 
     /**
+     * Attach the cancellation invoice (Stornorechnung, Order.enable_storno) to the status mail of
+     * an admin-cancelled order. That status mail is the customer's only notice of the credit note.
+     * Queued sending only; also subject to the SendReceiptEmail master switch.
+     */
+    private static bool $attach_storno_to_status_change = true;
+
+    /**
      * Decide whether the invoice PDF should be attached to a given mail type.
      * Combines the SiteConfig.SendReceiptEmail master switch with the per-type flag.
      *
-     * @param string $type One of 'receipt', 'confirmation', 'admin_notification'
+     * @param string $type One of 'receipt', 'confirmation', 'admin_notification', 'storno'
      */
     public static function shouldAttachInvoice(string $type): bool
     {
@@ -68,6 +75,7 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
             'receipt' => 'attach_invoice_to_receipt',
             'confirmation' => 'attach_invoice_to_confirmation',
             'admin_notification' => 'attach_invoice_to_admin',
+            'storno' => 'attach_storno_to_status_change',
             default => null,
         };
 

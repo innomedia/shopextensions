@@ -252,6 +252,21 @@ class SendOrderEmailJob extends AbstractQueuedJob
             $email->setBCC(Email::config()->admin_email);
         }
 
+        // Cancellation invoice for admin-cancelled orders that have one (enable_storno + invoice
+        // number): this status mail is the customer's only notice of the credit note.
+        if ($order->hasMethod('IsStorno') && $order->IsStorno()
+            && CustomOrderEmailNotifier::shouldAttachInvoice('storno')
+        ) {
+            $binary = $order->PDFStorno('binary');
+            if ($binary) {
+                $email->addAttachmentFromData(
+                    $binary,
+                    'Stornorechnung ' . $order->StornoNumber() . '.pdf',
+                    'application/pdf'
+                );
+            }
+        }
+
         $this->sendEmail($email, 'status_change');
 
         // Restore theme stack

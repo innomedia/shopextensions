@@ -17,6 +17,8 @@ ShopExtensions\CustomOrderEmailNotifier:
   attach_invoice_to_receipt: true
   attach_invoice_to_admin: true
   attach_invoice_to_confirmation: false
+  # Cancellation invoice (enable_storno) on the status mail of an admin-cancelled order
+  attach_storno_to_status_change: true
 
 SilverStripe\ORM\FieldType\DBCurrency:
   currency_symbol: '€'
