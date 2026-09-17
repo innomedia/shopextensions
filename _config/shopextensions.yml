@@ -84,7 +84,6 @@ SilverShop\Page\AccountPageController:
 SilverShop\Page\CheckoutPageController:
   extensions:
   - ShopExtensions\CheckoutPageControllerExtension
-  - SilverShop\Discounts\Extensions\CouponFormCheckoutDecorator
 SilverShop\Cart\ShoppingCartController:
   extensions:
   - ShopExtensions\ShoppingCartControllerExtension
@@ -142,3 +141,15 @@ SilverStripe\Core\Injector\Injector:
   # Use custom order email notifier with queued job support
   SilverShop\Checkout\OrderEmailNotifier:
     class: ShopExtensions\CustomOrderEmailNotifier
+
+---
+Name: shopextensions-discounts
+After: '#shopextensions'
+Only:
+  moduleexists: 'silvershop/discounts'
+---
+# Coupon form on the checkout page. silvershop/discounts is optional: registering its extension
+# unconditionally made every checkout request fatal in shops without the module.
+SilverShop\Page\CheckoutPageController:
+  extensions:
+    - SilverShop\Discounts\Extensions\CouponFormCheckoutDecorator

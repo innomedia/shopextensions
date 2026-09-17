@@ -397,7 +397,7 @@ class OrderTaxExtension extends Extension
      */
     public function hasCoupon()
     {
-        foreach ($this->owner->Discounts() as $discount) {
+        foreach ($this->discounts() as $discount) {
             if (!$discount->GiftVoucherID) {
                 return true;
             }
@@ -412,7 +412,7 @@ class OrderTaxExtension extends Extension
      */
     public function getCoupon()
     {
-        foreach ($this->owner->Discounts() as $discount) {
+        foreach ($this->discounts() as $discount) {
             if (!$discount->GiftVoucherID) {
                 return $discount;
             }
@@ -427,7 +427,7 @@ class OrderTaxExtension extends Extension
      */
     public function hasGiftCard()
     {
-        foreach ($this->owner->Discounts() as $discount) {
+        foreach ($this->discounts() as $discount) {
             if ($discount->GiftVoucherID) {
                 return true;
             }
@@ -442,12 +442,23 @@ class OrderTaxExtension extends Extension
      */
     public function getGiftCard()
     {
-        foreach ($this->owner->Discounts() as $discount) {
+        foreach ($this->discounts() as $discount) {
             if ($discount->GiftVoucherID) {
                 return $discount;
             }
         }
         return false;
+    }
+
+    /**
+     * The order's discounts, or an empty list when silvershop/discounts is not installed
+     * (Order::Discounts() is added by that module).
+     *
+     * @return iterable
+     */
+    protected function discounts(): iterable
+    {
+        return $this->owner->hasMethod('Discounts') ? $this->owner->Discounts() : [];
     }
 
     /**

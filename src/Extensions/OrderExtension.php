@@ -222,7 +222,8 @@ class OrderExtension extends Extension{
             return false;
         }
 
-        $discounts = $this->owner->Discounts();
+        // Discounts() only exists with silvershop/discounts installed.
+        $discounts = $this->owner->hasMethod('Discounts') ? $this->owner->Discounts() : [];
         $totaldiscount = 0;
         if(count($discounts) > 0 ){
             foreach ($discounts as $discount){

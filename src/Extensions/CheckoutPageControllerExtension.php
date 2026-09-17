@@ -11,7 +11,6 @@ use SilverStripe\Forms\Form;
 use SilverStripe\Forms\FormAction;
 use SilverShop\Forms\PaymentForm;
 use SilverShop\Cart\ShoppingCart;
-use SilverShop\Discounts\Form\CouponForm;
 use Dynamic\CountryDropdownField\Fields\CountryDropdownField;
 use ShopExtensions\Checkout\ShopCheckoutComponentConfig;
 use SilverStripe\Forms\CheckboxField;
