@@ -3,9 +3,8 @@
 namespace ShopExtensions;
 
 use SilverStripe\Core\Extension;
-use SilverStripe\Dev\Debug;
 use SilverStripe\Control\Director;
-use SilverStripe\Security\Security;
+use SilverStripe\Control\HTTPResponse;
 use SilverShop\Cart\ShoppingCart;
 
 /**
@@ -15,67 +14,72 @@ use SilverShop\Cart\ShoppingCart;
  * request is made via AJAX, it returns a JSON payload used by the front-end
  * to update the mini-cart (header dropdown) markup and the cart item count.
  *
+ * The payload is handed back through the by-reference $response argument of the core hooks.
+ * It used to be echoed, after which the controller still returned its own "1"/"" body, so the
+ * client received invalid JSON and the output bypassed the middleware.
+ *
  * @property \SilverShop\Cart\ShoppingCartController $owner
  */
-class ShoppingCartControllerExtension extends Extension{
+class ShoppingCartControllerExtension extends Extension
+{
     /**
      * Return a JSON response after a product is added to the cart via AJAX.
      *
-     * Re-renders the mini-cart with the AjaxCart template and echoes a JSON
-     * payload containing the updated mini-cart HTML, the current item count
-     * and an "added to cart" tooltip. Does nothing for non-AJAX requests.
-     *
      * @param \SilverStripe\Control\HTTPRequest $request The current request.
-     * @param \SilverStripe\Control\HTTPResponse $response The default response.
-     * @param \SilverShop\Page\Product $product The product that was added.
+     * @param HTTPResponse|null $response Set to the JSON response for AJAX requests.
+     * @param \SilverShop\Model\Buyable|null $product The product that was added.
      * @param int $quantity The quantity that was added.
-     * @return void JSON is echoed directly for AJAX requests.
      */
-    public function updateAddResponse($request, $response, $product, $quantity){
-
-        if(Director::is_ajax()){
-            $html = $this->owner->renderWith('AjaxCart')->forTemplate();
-            $return = json_encode([
-                'type' => 'multiple',
-                'target' => $request->postVar('target'),
-                'tooltip' => _t('Order.ADDEDTOCART', 'Produkt in den Warenkorb gelegt'),
-                'values' => [
-                    '.header__ajaxcart' => $html,
-                    '.header__itemsincart' => ShoppingCart::curr()->Items()->Count()
-                    ]
-            ]);
-            echo $return;
+    public function updateAddResponse($request, &$response, $product = null, $quantity = 1)
+    {
+        if (!Director::is_ajax() || $response instanceof HTTPResponse) {
             return;
         }
+
+        $response = $this->jsonResponse([
+            'type' => 'multiple',
+            'target' => $request->postVar('target'),
+            'tooltip' => _t('Order.ADDEDTOCART', 'Produkt in den Warenkorb gelegt'),
+            'values' => $this->cartValues(),
+        ]);
     }
 
     /**
      * Return a JSON response after all of a product's items are removed via AJAX.
      *
-     * Re-renders the mini-cart with the AjaxCart template and echoes a JSON
-     * payload containing the updated mini-cart HTML and the current item
-     * count. Does nothing for non-AJAX requests.
-     *
      * @param \SilverStripe\Control\HTTPRequest $request The current request.
-     * @param \SilverStripe\Control\HTTPResponse $response The default response.
-     * @param \SilverShop\Page\Product $product The product that was removed.
-     * @return void JSON is echoed directly for AJAX requests.
+     * @param HTTPResponse|null $response Set to the JSON response for AJAX requests.
+     * @param \SilverShop\Model\Buyable|null $product The product that was removed.
      */
-    public function updateRemoveAllResponse($request, $response, $product){
-        $this->owner->cart = ShoppingCart::singleton();
-
-        if(Director::is_ajax()){
-            $html = $this->owner->renderWith('AjaxCart')->forTemplate();
-            $return = json_encode([
-                'type' => 'multiple',
-                'target' => $request->postVar('target'),
-                'values' => [
-                    '.header__ajaxcart' => $html,
-                    '.header__itemsincart' => ShoppingCart::curr()->Items()->Count()
-                    ]
-            ]);
-            echo $return;
+    public function updateRemoveAllResponse($request, &$response, $product = null)
+    {
+        if (!Director::is_ajax() || $response instanceof HTTPResponse) {
             return;
         }
+
+        $response = $this->jsonResponse([
+            'type' => 'multiple',
+            'target' => $request->postVar('target'),
+            'values' => $this->cartValues(),
+        ]);
+    }
+
+    /**
+     * Mini-cart markup and item count for the header.
+     */
+    protected function cartValues(): array
+    {
+        $cart = ShoppingCart::curr();
+
+        return [
+            '.header__ajaxcart' => $this->owner->renderWith('AjaxCart')->forTemplate(),
+            '.header__itemsincart' => $cart ? $cart->Items()->Count() : 0,
+        ];
+    }
+
+    protected function jsonResponse(array $data): HTTPResponse
+    {
+        return HTTPResponse::create(json_encode($data))
+            ->addHeader('Content-Type', 'application/json; charset=utf-8');
     }
 }
