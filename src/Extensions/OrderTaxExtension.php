@@ -243,7 +243,10 @@ class OrderTaxExtension extends Extension
         if ($coupon && method_exists($coupon, 'getFor') && $coupon->getFor() == 'Items') {
             foreach ($order->Items() as $item) {
                 $product = $this->productFor($item);
-                if (!$product || !method_exists($item, 'Discounts')) {
+                // hasMethod(), not method_exists(): Discounts() is a many_many added by the
+                // discounts module's DiscountedOrderItem extension, so method_exists() was always
+                // false and item coupons were never attributed to their tax rate.
+                if (!$product || !$item->hasMethod('Discounts')) {
                     continue;
                 }
                 foreach ($item->Discounts() as $discount) {
