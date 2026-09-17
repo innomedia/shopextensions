@@ -155,15 +155,7 @@ class SendOrderEmailJob extends AbstractQueuedJob
         );
 
         $filename = 'Lieferschein ' . $order->InvoiceNumber() . '.pdf';
-        $to = "";
-
-        if (SiteConfig::current_site_config()->AdminNotificationMail != '') {
-            $to = SiteConfig::current_site_config()->AdminNotificationMail;
-        } else if (Email::config()->shop_adminemail != null) {
-            $to = Email::config()->shop_adminemail;
-        } else {
-            $to = Email::config()->admin_email;
-        }
+        $to = CustomOrderEmailNotifier::adminNotificationRecipient();
         $siteConfig = SiteConfig::current_site_config();
         $fromEmail = $siteConfig->AdminEmail ?: Email::config()->admin_email;
         $email = Email::create()
@@ -199,11 +191,20 @@ class SendOrderEmailJob extends AbstractQueuedJob
                 '',
                 ['OrderNo' => $order->Reference]
             ))
-            ->setTo(Email::config()->admin_email)
-            ->setBody($order->renderWith(Order::class))
+            // Same recipient as the new-order notification (site settings first). admin_email
+            // alone is often empty in projects that keep the addresses in the SiteConfig.
+            ->setTo(CustomOrderEmailNotifier::adminNotificationRecipient())
             ->setFrom(
                 $fromEmail
-            );
+            )
+            // A template instead of setBody($order->renderWith(Order::class)): TemplatedEmail only
+            // keeps string bodies, so the rendered DBHTMLText came out as an EMPTY mail, and
+            // Order.ss is the browser view of the order, not a cancellation notice.
+            ->setHTMLTemplate('SilverShop/Model/Order_CancelNotificationEmail')
+            ->setData([
+                'Order' => $order,
+                'BaseURL' => Director::absoluteBaseURL(),
+            ]);
 
         $this->sendEmail($email, 'cancel_notification');
     }

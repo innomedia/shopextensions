@@ -79,6 +79,21 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
     }
 
     /**
+     * Recipient for operator mails (new-order notification, customer cancellation): the mailbox
+     * from the site settings (SiteConfig.AdminNotificationMail), then Email.shop_adminemail, then
+     * Email.admin_email.
+     */
+    public static function adminNotificationRecipient(): string
+    {
+        $siteConfig = SiteConfig::current_site_config();
+        if ((string) $siteConfig->AdminNotificationMail !== '') {
+            return (string) $siteConfig->AdminNotificationMail;
+        }
+
+        return (string) (Email::config()->get('shop_adminemail') ?: Email::config()->get('admin_email'));
+    }
+
+    /**
      * Queue or send email based on configuration
      */
     protected function queueOrSendEmail(string $emailType, array $params = []): bool|string
@@ -89,7 +104,7 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
                 'confirmation' => parent::sendConfirmation(),
                 'receipt' => parent::sendReceipt(),
                 'admin_notification' => $this->sendAdminNotificationDirect(),
-                'cancel_notification' => parent::sendCancelNotification(),
+                'cancel_notification' => $this->sendCancelNotificationDirect(),
                 'status_change' => parent::sendStatusChange($params['title'] ?? '', $params['note'] ?? ''),
                 default => false,
             };
@@ -170,15 +185,7 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
         );
 
         $filename = 'Lieferschein ' . $this->order->InvoiceNumber() . '.pdf';
-        $to = "";
-
-        if (SiteConfig::current_site_config()->AdminNotificationMail != '') {
-            $to = SiteConfig::current_site_config()->AdminNotificationMail;
-        } else if (Email::config()->shop_adminemail != null) {
-            $to = Email::config()->shop_adminemail;
-        } else {
-            $to = Email::config()->admin_email;
-        }
+        $to = self::adminNotificationRecipient();
 
         $siteConfig = SiteConfig::current_site_config();
         
@@ -210,6 +217,43 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
             $email->send();
         } catch (TransportExceptionInterface $e) {
             $this->logger->error('OrderEmailNotifier.sendAdminNotification: error sending email in ' . __FILE__ . ' line ' . __LINE__ . ": {$e->getMessage()}");
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Direct send for the customer-cancellation notice (queued jobs disabled). Mirrors
+     * SendOrderEmailJob::sendCancelNotification(): the core version passes a rendered DBHTMLText to
+     * setBody(), which TemplatedEmail drops (empty mail), and renders the browser view of the order.
+     */
+    protected function sendCancelNotificationDirect(): bool|string
+    {
+        $siteConfig = SiteConfig::current_site_config();
+        $email = Email::create()
+            ->setSubject(_t(
+                'SilverShop\\ShopEmail.CancelSubject',
+                'Order #{OrderNo} cancelled by member',
+                '',
+                ['OrderNo' => $this->order->Reference]
+            ))
+            ->setTo(self::adminNotificationRecipient())
+            ->setFrom($siteConfig->AdminEmail ?: Email::config()->admin_email)
+            ->setHTMLTemplate('SilverShop/Model/Order_CancelNotificationEmail')
+            ->setData([
+                'Order' => $this->order,
+                'BaseURL' => Director::absoluteBaseURL(),
+            ]);
+
+        if ($this->debugMode) {
+            return $this->debug($email);
+        }
+
+        try {
+            $email->send();
+        } catch (TransportExceptionInterface $e) {
+            $this->logger->error('OrderEmailNotifier.sendCancelNotification: error sending email: ' . $e->getMessage());
             return false;
         }
 
