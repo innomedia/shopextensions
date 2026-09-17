@@ -2,10 +2,12 @@
 
 namespace ShopExtensions;
 
+use Psr\Log\LoggerInterface;
 use SilverShop\Model\Order;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\Email\Email;
 use SilverStripe\Core\Extension;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Omnipay\GatewayInfo;
 use SilverStripe\Omnipay\Model\Payment;
 use SilverStripe\Omnipay\Service\ServiceFactory;
@@ -158,29 +160,34 @@ class PaymentExtension extends Extension
         }
 
         $from = $siteConfig->AdminEmail ?: Email::config()->admin_email;
-        $body = sprintf(
-            '<p>Für Bestellung <strong>%s</strong> (ID %d) wurde eine <strong>zusätzliche Zahlung</strong> '
-                . 'verbucht, obwohl die Bestellung bereits durch eine andere Zahlung gedeckt war.</p>'
-                . '<p>Betroffene Zahlung: Gateway %s, Betrag %s, Payment-ID %d, Referenz %s.</p>'
-                . '<p>Bitte eine Rückerstattung prüfen.</p>',
-            htmlspecialchars((string) $order->Reference),
-            (int) $order->ID,
-            htmlspecialchars((string) $payment->Gateway),
-            htmlspecialchars((string) $payment->dbObject('Money')->Nice()),
-            (int) $payment->ID,
-            htmlspecialchars((string) $payment->TransactionReference)
-        );
 
         try {
+            // Body from a template (ShopExtensions/Email/DuplicatePaymentEmail, overridable in the
+            // theme) instead of a sprintf() string, so projects get their mail layout and the
+            // operator sees all payments of the order, not just the surplus one.
             Email::create()
                 ->setTo($to)
-                ->setFrom($from, $siteConfig->AdminName ?: '')
-                ->setSubject(sprintf('Mögliche Doppelzahlung – Bestellung %s', $order->Reference))
-                ->setBody($body)
-                ->setData(['BaseURL' => Director::absoluteBaseURL()])
+                ->setFrom($from, (string) ($siteConfig->AdminName ?: ''))
+                ->setSubject(_t(
+                    'ShopExtensions\\Email.DuplicatePaymentSubject',
+                    'Mögliche Doppelzahlung – Bestellung {ref}',
+                    '',
+                    ['ref' => $order->Reference]
+                ))
+                ->setHTMLTemplate('ShopExtensions/Email/DuplicatePaymentEmail')
+                ->setData([
+                    'Order' => $order,
+                    'Payment' => $payment,
+                    'SiteConfig' => $siteConfig,
+                    'BaseURL' => Director::absoluteBaseURL(),
+                ])
                 ->send();
         } catch (\Throwable $e) {
-            // Never let alerting break the payment capture flow.
+            // Never let alerting break the payment capture flow, but leave a trace: a silently
+            // swallowed error here once meant the alert never went out at all.
+            Injector::inst()->get(LoggerInterface::class)->error(
+                'Duplicate payment alert for order ' . $order->Reference . ' failed: ' . $e->getMessage()
+            );
         }
     }
 
