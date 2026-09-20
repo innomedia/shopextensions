@@ -1,0 +1,39 @@
+---
+Name: shopextensions-streetaddress-example
+After: '#shopextensions'
+---
+# =============================================================================
+# Opt-in: Straße + Hausnummer getrennt, Pflichtfelder und PLZ-Prüfung je Land
+#
+# Die Etiketten-APIs von DHL/UPS wollen Straße und Hausnummer getrennt. Diese Extension legt
+# Address.StreetName + Address.HouseNumber an, hält die einspaltige Kern-Adresse (Address) beim
+# Speichern synchron ("Hauptstraße 12") und macht PLZ/Ort/Land zu Pflichtfeldern mit Prüfung je Land.
+#
+# Kopieren nach z. B. app/_config/streetaddress.yml, danach `vendor/bin/sake db:build flush=1`.
+#
+# ACHTUNG: nicht zusammen mit einer projekteigenen Address-Extension registrieren, die ebenfalls
+# updateRequiredFields/updateFormFields implementiert (z. B. Ghee\Shop\Extensions\ShopAddressExtension,
+# Tietge ShopAddressExtension, vogelwerk AddressExtension) — die zuletzt registrierte gewinnt.
+# Spaltennamen sind identisch, es ist also keine Datenmigration nötig.
+# =============================================================================
+
+SilverShop\Model\Address:
+  extensions:
+    - ShopExtensions\Address\StreetAddressExtension
+
+ShopExtensions\Address\StreetAddressExtension:
+  required_address_fields:
+    - Country
+    - StreetName
+    - HouseNumber
+    - PostalCode
+    - City
+  drop_fields:
+    - State
+    - Phone
+  default_country: 'DE'
+  postcode_patterns:
+    DE: '^[0-9]{5}$'
+    AT: '^[0-9]{4}$'
+  # Vor-/Nachname aus dem aktuellen Warenkorb ergänzen (nur im Web-Request)
+  fill_names_from_cart: true
