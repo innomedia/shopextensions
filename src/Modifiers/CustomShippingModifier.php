@@ -183,8 +183,11 @@ class CustomShippingModifier extends OrderModifier
 
     protected function sessionCountry(): ?string
     {
-        $request = Controller::has_curr()
-            ? Controller::curr()->getRequest()
+        // Controller::curr() returns null outside a request (CLI/queued job) in SilverStripe 6;
+        // has_curr() no longer exists.
+        $controller = Controller::curr();
+        $request = $controller
+            ? $controller->getRequest()
             : Injector::inst()->get(HTTPRequest::class);
 
         if (!$request || !$request->hasSession()) {

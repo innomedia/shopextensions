@@ -96,6 +96,13 @@ SilverShop\Model\Address:
 SilverStripe\Omnipay\Service\PurchaseService:
   extensions:
   - ShopExtensions\ExtendedPurchaseService
+  # Bugfixes, on by default (see CHANGELOG). Projects with their own copy of these two classes
+  # remove theirs when updating.
+  # Mollie returns without any parameter → keep the transaction reference and pass it back.
+  - ShopExtensions\Payment\PaymentReferenceExtension
+  # Webhook and browser return arrive at the same second → complete the payment only once
+  # (otherwise every order mail goes out twice).
+  - ShopExtensions\Payment\PaymentCompletionLockExtension
 # Assign the invoice number when a Manual/invoice payment is authorized/captured. The
 # Cart→Unpaid transition happens before the Payment exists, so this can't be done in
 # Order::onStatusChange (see PaymentExtension for the full rationale).
@@ -144,6 +151,10 @@ SilverStripe\Core\Injector\Injector:
   # Use custom order email notifier with queued job support
   SilverShop\Checkout\OrderEmailNotifier:
     class: ShopExtensions\CustomOrderEmailNotifier
+  # silvershop/core 6.0.x: ShopQuantityField::forTemplate() is typed `string` but returns DBHTMLText
+  # → every cart page with an item fails with a TypeError. Remove once core casts it itself.
+  SilverShop\Forms\ShopQuantityField:
+    class: ShopExtensions\Forms\ShopQuantityField
 
 ---
 Name: shopextensions-discounts
