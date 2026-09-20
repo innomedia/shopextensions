@@ -1,0 +1,137 @@
+# Änderungen
+
+Format: neueste Version zuerst. „Migration" = was ein Projekt beim Update tun muss.
+
+## Unveröffentlicht (geplant als 6.1.0)
+
+### Rechnungsnummern werden nie wiederverwendet (Bugfix, wirkt sofort)
+
+`OrderExtension::assignInvoiceNumber()` hat die nächste Nummer als `MAX(InvoiceNumber) + 1` über die
+vorhandenen Bestellungen gebildet. Wird die Bestellung mit der höchsten Nummer gelöscht (Testdaten,
+DSGVO-Löschung, Papierkorb im CMS), sinkt das Maximum und die nächste Bestellung bekommt **dieselbe
+Rechnungsnummer noch einmal** (in einem Testshop beobachtet: zwei Bestellungen mit `GV-1002`). Zwei
+gleichzeitige Zahlungsabschlüsse konnten ebenfalls dieselbe Nummer lesen.
+
+Neu: ein persistenter Zähler in der Tabelle `ShopExtensions_NumberSequence`
+(`ShopExtensions\Model\NumberSequence`). Er wird atomar hochgezählt (MySQL/MariaDB per
+`UPDATE … LAST_INSERT_ID(…)`, sonst `UPDATE` + `SELECT` in einer Transaktion), sinkt nie und liegt
+immer über der höchsten noch vorhandenen Rechnungsnummer (so heilt er importierte oder von Hand
+gesetzte Nummern). `SiteConfig.InvoiceNumberStart` wirkt wie bisher nur, solange noch keine Rechnung
+existiert.
+
+Migration:
+- `vendor/bin/sake db:build flush=1` (legt Tabelle und den Index auf `Order.InvoiceNumber` an).
+- Der Zähler startet beim ersten Gebrauch automatisch bei der höchsten vorhandenen Nummer.
+- Bestandsdaten prüfen (Doppel bleiben bestehen, sie werden nicht umnummeriert — eine ausgegebene
+  Rechnungsnummer darf sich nicht ändern):
+  ```sql
+  SELECT InvoiceNumber, COUNT(*) c, GROUP_CONCAT(ID) FROM SilverShop_Order
+  WHERE InvoiceNumber > 0 GROUP BY InvoiceNumber HAVING c > 1;
+  ```
+  Treffer gehören in die Buchhaltung (Storno + neue Rechnung), nicht ins Deployment.
+- Wer den Zähler bewusst höher setzen will (neuer Nummernkreis), setzt `LastValue` in
+  `ShopExtensions_NumberSequence` (Name `invoice`) einmalig per SQL.
+
+### Zahlungsabschluss robuster (Bugfix, standardmäßig an)
+
+- `ShopExtensions\Payment\PaymentReferenceExtension`: sichert die Transaktionsreferenz beim Start der
+  Zahlung und gibt sie beim Abschluss mit. Ohne sie bricht der Mollie-Rücksprung mit „The
+  transactionReference parameter is required" ab, obwohl der Kunde bezahlt hat. Füllt nur eine leere
+  Referenz.
+- `ShopExtensions\Payment\PaymentCompletionLockExtension`: ein MySQL-`GET_LOCK` je Bestellung,
+  solange ein Zahlungsabschluss läuft. Webhook und Rücksprung kommen gleichzeitig an und verschicken
+  sonst jede Bestell-Mail doppelt. Config `enabled`, `lock_timeout`, `lock_prefix`, Hook
+  `updatePaymentLockName`.
+
+Migration: beide Extensions sind in `shopextensions.yml` registriert. Projekte mit eigener Kopie
+(`Tietge\Books\Checkout\Payment*Extension`, `Ghee\Shop\Checkout\Payment*Extension`) **löschen Klasse
+und YAML-Eintrag im selben Schritt**.
+
+### Warenkorb-Mengenfeld (Bugfix, standardmäßig an)
+
+`ShopExtensions\Forms\ShopQuantityField` behebt den TypeError aus silvershop/core 6.0.x
+(`forTemplate(): string` gibt `DBHTMLText` zurück → jede Warenkorbseite mit Position = 500). Per
+Injector registriert.
+
+Migration: Projektkopien (`Tietge\Books\Form\ShopQuantityField`, `CustomShopQuantityField`,
+`Ghee\Shop\Form\ShopQuantityField`) samt Injector-Eintrag löschen.
+
+### Zahlart-Kacheln: Verfügbarkeit, Kurzbeschreibung, Methoden-Dropdown
+
+- `PaymentOption::canUse()` nimmt jetzt optional die Bestellung entgegen
+  (`canUse(?Order $order = null)`, Hook `canUse($order)`) — Filter können den Warenkorb ansehen.
+- Neue Config `required_gateway_parameters` (z. B. `{Mollie: [apiKey]}`): Kacheln, deren Gateway
+  keine Zugangsdaten hat, werden ausgeblendet statt erst nach dem Klick auf „bestellen" zu scheitern.
+- Neues Feld `TileDescription` (Varchar 160): ein Satz unter dem Kacheltitel, im mitgelieferten
+  Template mit `aria-describedby` verknüpft.
+- Neue Config `gateway_methods` (z. B. `{Mollie: {creditcard: Kreditkarte, …}}`): im CMS wird aus dem
+  freien „Methoden-Code" ein Dropdown; ohne Eintrag bleibt das Textfeld.
+- `OrderActionsFormExtension` (Wieder-Bezahlen im Konto): Config `repay_exclude_manual_gateways`
+  (Standard false). Auf true fallen Vorkasse/Rechnung als Wiederholungszahlung weg; bleibt keine
+  Online-Zahlart übrig, verschwindet der Zahlungsblock samt Button.
+
+Migration: nur Config; das Feld `TileDescription` entsteht beim `db:build`. Projekte mit eigener
+Extension für Kurzbeschreibung/Methodenliste (`Ghee\Shop\Extensions\PaymentOptionExtension`,
+`Ghee\Shop\Checkout\MollieAvailabilityExtension`) löschen sie und setzen die Config-Werte.
+
+### Ratenbegrenzung
+
+`ShopExtensions\Security\RequestThrottle::attempt($request, $bucket, ?$key)` — Buckets als
+`[Versuche, Minuten]`, Schlüssel je IP oder je übergebener Identität (z. B. `member-12`). Wird von den
+Opt-in-Features benutzt (Kontoanlage im Checkout, Summary-Endpunkt, Registrierung, Cart-API) und kann
+von Projekten/Modulen mitbenutzt werden. Ersetzt `Ghee\Security\RequestThrottle`.
+
+### Gast-Rechnung `/rechnung/<token>` (opt-in)
+
+`ShopExtensions\Receipt\OrderReceiptTokenExtension` + `ShopExtensions\Controllers\GuestReceiptController`
+(siehe `_config/guestreceipt.yml.example`): unerratbares Token je Bestellung, PDF und optional eine
+barrierefreie HTML-Ansicht (`?format=html`, Template `ShopExtensions/Layout/GuestReceipt.ss`), gleiche
+404-Antwort für jeden Fehlerfall, kein Caching, `noindex` + `no-referrer`, Locale der Bestellung.
+
+Migration: Spaltenname `ReceiptToken` wie in allen bisherigen Projektkopien — bestehende Mail-Links
+bleiben gültig. Projektkopie (Extension **und** Controller **und** Director-Regel) im selben Schritt
+löschen. `absolute_links: true` stellt das vogelwerk-Verhalten her (absolute `GuestReceiptLink()`).
+
+### Checkout (opt-in, siehe `_config/checkout.yml.example`)
+
+- `ShopExtensions\Checkout\CheckoutComponentValidator`: Pflichtfelder (core initialisiert `$required`
+  nie), Feldbezug der Komponenten-Meldungen (Code-Map), E-Mail-Format, PLZ je Land, Zahlart-Prüfung,
+  Hook `updateCheckoutValidation($data, $validator, &$valid)`.
+- `ShopExtensions\Checkout\Component\BillingSameAsShippingAddress` und `…\Component\OptionalMembership`,
+  einsetzbar über die neue Map `ShopCheckoutComponentConfig.component_classes` (kein eigener Subclass
+  mehr nötig) plus `shipping_add_to_address_book` / `billing_add_to_address_book`.
+- `ShopExtensions\CheckoutPageControllerExtension`: `$CheckoutPaymentNotice` (omnipay-6-tauglicher
+  Ersatz für das kaputte `PaymentErrorMessage`), `$CheckoutErrorSummary` (Fehlerliste für A11Y),
+  `restore_unchecked_checkboxes`, `hide_raw_gateway_messages`, `success_link_to_confirmation`,
+  `terms_label_with_legal_links`, `POST <kasse>/summary` (`enable_summary_endpoint`) und
+  `disable_cache` (Standard an: die Kasse ist sitzungsgebunden).
+- `ShopExtensions\Checkout\SiteConfigCheckoutExtension`: Seiten für Widerruf/Datenschutz im
+  AGB-Häkchen und die einmalige Migration `migrate_send_receipt_email`.
+
+### Adresse: Straße + Hausnummer (opt-in)
+
+`ShopExtensions\Address\StreetAddressExtension` (siehe `_config/streetaddress.yml.example`): getrennte
+Felder `StreetName`/`HouseNumber` (Etiketten-APIs), synchrone einspaltige Kern-Adresse, Pflichtfelder
+und PLZ-Prüfung je Land. Nicht zusammen mit einer projekteigenen Address-Extension registrieren.
+
+### Lieferdatum (opt-in)
+
+`ShopExtensions\Delivery\DeliveryEstimate` + `SiteConfigDeliveryExtension` (siehe
+`_config/delivery.yml.example`): Versand- und Lieferdatum in Werktagen, Hook `updateIsBusinessDay`,
+Template `ShopExtensions/Includes/DeliveryEstimate.ss`.
+
+### Neue Schnittstellen für Fremdmodule (z. B. Abos)
+
+- `ExtendedPurchaseService`: Hook `updatePurchaseData(&$data, $order, $payment)` — zusätzliche
+  Gateway-Felder (Mollie `customerReference`, `sequenceType`, `mandateId`) ohne zweite
+  PurchaseService-Extension mit unklarer Reihenfolge.
+- `SilverShop\Model\Order.paid_status_gateways`: die bisher fest verdrahtete Gateway-Liste in
+  `OrderExtension::onStatusChange()` ist konfigurierbar.
+- `Order`-Hook `updateOrderEmail($email, $type)` in `SendOrderEmailJob` und `CustomOrderEmailNotifier`
+  (`$type` = confirmation | receipt | admin_notification | cancel_notification | status_change).
+- `ShopExtensions\Service\OrderPlacer`: Bestellungen ohne Checkout/Session/Request platzieren,
+  Zahlung erfassen und auf „Bezahlt" setzen (Abo-Folgelieferungen aus Webhook/Cron; löst die normale
+  Pipeline aus: Rechnungsnummer, Beleg-Mail, Admin-Mail).
+- `ShopExtensions\AccountPageControllerExtension::AccountNavItems()` mit Hook
+  `updateAccountNavItems($items)` — Fremdmodule hängen eigene Kontobereiche in die Navigation.
+- `PaymentOption::canUse($order)` mit Bestellkontext (s. o.).

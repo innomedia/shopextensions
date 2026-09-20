@@ -14,6 +14,12 @@ Inhalt:
 7. [Optional: Rechnungs-/Buchhaltungs-Export (DATEV-CSV & Sammel-PDF)](#7-optional-rechnungs-buchhaltungs-export-datev-csv--sammel-pdf)
 8. [Optional: Zahlart-Vorauswahl im Checkout (Payment-Tiles)](#8-optional-zahlart-vorauswahl-im-checkout-payment-tiles)
 9. [Optional: Verzögerte Zahlungen (SEPA/async) & Auto-Storno](#9-optional-verzögerte-zahlungen-sepaasync--auto-storno)
+10. [Optional: Gast-Rechnung `/rechnung/<token>`](#10-optional-gast-rechnung-rechnungtoken)
+11. [Optional: Checkout-Bausteine (Validator, Komponenten, Summary, Rechtstexte)](#11-optional-checkout-bausteine)
+12. [Optional: Adresse mit Straße + Hausnummer](#12-optional-adresse-mit-straße--hausnummer)
+13. [Optional: Lieferdatum](#13-optional-lieferdatum)
+14. [Ratenbegrenzung (RequestThrottle)](#14-ratenbegrenzung-requestthrottle)
+15. [Schnittstellen für andere Module (Hooks)](#15-schnittstellen-für-andere-module-hooks)
 
 ---
 
@@ -234,7 +240,18 @@ Diese Werte liegen **nicht** in shopextensions, werden aber genutzt:
 - **Order-Status-Enum:** Wenn das Projekt eigene Status nutzt (z. B. `Refunded`), müssen diese im
   `SilverShop\Model\Order.db.Status`-Enum und ggf. in `log_status` stehen.
 - **Nummernkreis:** Bereits vergebene `InvoiceNumber` werden nie überschrieben; `InvoiceNumberStart`
-  greift nur, solange noch keine Rechnung existiert.
+  greift nur, solange noch keine Rechnung existiert. Die nächste Nummer kommt aus dem persistenten
+  Zähler `ShopExtensions_NumberSequence` (Name `invoice`) und **nicht** aus `MAX(InvoiceNumber) + 1`:
+  wird die Bestellung mit der höchsten Nummer gelöscht (Testdaten, DSGVO-Löschung, Papierkorb), sänke
+  das Maximum und die nächste Bestellung bekäme dieselbe Rechnungsnummer noch einmal. Der Zähler
+  sinkt nie, ist gegen gleichzeitige Zahlungsabschlüsse abgesichert und liegt immer über der höchsten
+  noch vorhandenen Nummer (heilt importierte/handgesetzte Nummern). Bestandsdaten prüfen:
+  ```sql
+  SELECT InvoiceNumber, COUNT(*) c FROM SilverShop_Order
+  WHERE InvoiceNumber > 0 GROUP BY InvoiceNumber HAVING c > 1;
+  ```
+  Treffer werden NICHT automatisch umnummeriert (eine ausgegebene Rechnungsnummer darf sich nicht
+  ändern) – das ist ein Fall für die Buchhaltung (Storno + neue Rechnung).
 - **Steuer bei platzierten Bestellungen ist eingefroren (idiomatisch):** Der `CustomTaxModifier`
   rechnet die Steuer nur live, solange die Order ein Warenkorb ist — `value()` liefert den Beitrag
   zum Order-Total, SilverShops Basis-`modify()` friert ihn in `Amount` ein. Beim Placement wird die
@@ -372,12 +389,20 @@ Code setzte fälschlich `paymentType` aus `$_SESSION` und reichte damit nichts d
 |---|---|---|
 | `ShopCheckoutComponentConfig.use_payment_tiles` | `false` | Tile-Component statt Standard-Gateway-Radioliste. |
 | `SiteConfigPaymentTilesExtension.enabled` | `false` | Zeigt den „Zahlarten"-Reiter (GridField) im Shop-Reiter. |
-| `PaymentOption` (DataObject) | — | `PaymentGateway`, `PaymentMethod`, `Title`, `Sort`, `Enabled`, `Image`. |
+| `PaymentOption` (DataObject) | — | `PaymentGateway`, `PaymentMethod`, `Title`, `TileDescription`, `Sort`, `Enabled`, `Image`, `InvoiceOnPlacement`. |
+| `PaymentOption.required_gateway_parameters` | `[]` | z. B. `{Mollie: [apiKey]}`: Kacheln eines Gateways ohne Zugangsdaten werden gar nicht erst angeboten (sonst scheitert der Kunde erst NACH dem Klick auf „zahlungspflichtig bestellen"). |
+| `PaymentOption.gateway_methods` | `[]` | z. B. `{Mollie: {creditcard: Kreditkarte, paypal: PayPal}}`: macht aus dem freien Methoden-Code im CMS ein Dropdown. Ein gespeicherter Code, der nicht in der Liste steht, bleibt erhalten. |
+| `Order.repay_exclude_manual_gateways` | `false` | Beim Wieder-Bezahlen im Konto keine manuellen Zahlarten (Vorkasse/Rechnung) anbieten; bleibt keine Online-Zahlart übrig, verschwindet der Zahlungsblock. |
+
+`TileDescription` (max. 160 Zeichen) ist ein Satz unter dem Kacheltitel („Sie überweisen nach der
+Bestellung …"); das mitgelieferte Template verknüpft ihn per `aria-describedby` mit dem Radio.
 
 **Fallback/Robustheit:** Nur Kacheln mit **unterstütztem** Gateway
-(`GatewayInfo::getSupportedGateways()`) und `Enabled` werden angezeigt. Ist keine aktive Zahlart
-gepflegt oder das Flag aus, bleibt automatisch der Standard-Checkout aktiv. Verfügbarkeitsregeln
-je Bestellung sind über den Erweiterungspunkt `PaymentOption::canUse()` nachrüstbar.
+(`GatewayInfo::getSupportedGateways()`), `Enabled` und vollständigen Gateway-Zugangsdaten werden
+angezeigt. Ist keine aktive Zahlart gepflegt oder das Flag aus, bleibt automatisch der
+Standard-Checkout aktiv. Weitere Verfügbarkeitsregeln über den Erweiterungspunkt
+`PaymentOption::canUse(?Order $order)` – der Warenkorb wird mitgegeben, sofern der Aufrufer ihn kennt
+(z. B. „bei Abo-Artikeln nur mandatsfähige Methoden").
 
 ### 8.5 Wieder-Bezahlen im Kundenkonto (gleiche Kacheln)
 Zahlt ein Kunde eine offene (`Unpaid`) Bestellung aus seinem Konto erneut, sieht er dieselben
@@ -476,3 +501,189 @@ vendor/bin/sake dev/tasks/cancel-stale-unpaid-orders
   mit `InvoiceOnPlacement` markieren — sonst verbrennt eine abgebrochene Zahlung eine Nummer.
 - **Kein Doppel-Storno:** Der Task nutzt bewusst `MemberCancelled` (nicht `AdminCancelled`), damit
   das Storno-/Stornorechnungs-Feature (Abschnitt 7) **nicht** ausgelöst wird.
+
+
+---
+
+## 10. Optional: Gast-Rechnung `/rechnung/<token>`
+
+Gastbestellungen haben kein Kundenkonto – und damit keinen Weg zur Rechnung. Diese Funktion gibt
+jeder Bestellung beim Platzieren ein unerratbares Token (32 Zufallsbytes = 64 Hex-Zeichen, Spalte
+`Order.ReceiptToken`, indiziert) und liefert darüber die Rechnung aus.
+
+Aktivierung: `_config/guestreceipt.yml.example` nach `app/_config/guestreceipt.yml` kopieren, danach
+`vendor/bin/sake db:build flush=1` (legt die Spalte an und versieht bestehende bezahlte Bestellungen
+mit einem Token).
+
+```
+GET /rechnung/<token>               Rechnung als PDF
+GET /rechnung/<token>?format=html   dieselbe Rechnung als barrierefreie Webseite (enable_html_view)
+```
+
+Sicherheit: nur die Status aus `receipt_statuses` (Standard Paid/Sent/Complete), Token-Vergleich
+zusätzlich mit `hash_equals`, **dieselbe 404-Antwort für jeden Fehlerfall** (ein Unterschied würde
+gültige Token verraten), kein Caching, `X-Robots-Tag: noindex`, `Referrer-Policy: no-referrer`,
+Rendering in der Locale der BESTELLUNG.
+
+| Config (`ShopExtensions\Controllers\GuestReceiptController`) | Standard | Bedeutung |
+|---|---|---|
+| `url_segment` | `rechnung` | muss zur Director-Regel passen (die Links werden daraus gebaut) |
+| `receipt_statuses` | `[Paid, Sent, Complete]` | Status mit Rechnung |
+| `content_disposition` | `attachment` | `inline` öffnet das PDF im Browser-Tab |
+| `filename_pattern` | `Rechnung_{number}.pdf` | `{number}` = Rechnungsnummer (sonst Bestellreferenz) |
+| `enable_html_view` | `false` | HTML-Ansicht unter `?format=html` |
+| `absolute_links` | `false` | `GuestReceiptLink()` absolut statt relativ |
+| `html_page_class` | `Page` | Seitenklasse für das Seiten-Chrome der HTML-Ansicht (`''` = eigenständiges Template) |
+| `html_page_fields` | `[]` | Feldwerte für diese transiente Seite, z. B. `ShowBreadcrumbs: false` |
+
+Getter auf der Order (für Templates und Mails): `GuestReceiptLink()`, `AbsoluteGuestReceiptLink()`,
+`GuestReceiptHtmlLink()`, `AbsoluteGuestReceiptHtmlLink()`, `hasGuestReceipt()`. In Mails immer die
+`Absolute*`-Variante verwenden (Queued Jobs laufen ohne Request).
+
+Templates: `ShopExtensions/Layout/GuestReceipt.ss` (im Theme überschreiben) bzw.
+`ShopExtensions/GuestReceiptStandalone.ss` ohne Seitenklasse; Hook
+`updateGuestReceiptHtmlData(array &$data, Order $order)`.
+
+**Beim Umstieg:** Projekte mit eigener Kopie (Extension + Controller + Director-Regel) löschen diese
+im selben Schritt. Der Spaltenname ist überall `ReceiptToken`, bestehende Mail-Links bleiben gültig.
+
+---
+
+## 11. Optional: Checkout-Bausteine
+
+Alles einzeln zuschaltbar, Vorlage `_config/checkout.yml.example`.
+
+**Validator** (`ShopExtensions\Checkout\CheckoutComponentValidator`, per Injector auf
+`SilverShop\Forms\CheckoutComponentValidator`): silvershop/core initialisiert die Pflichtfeldliste
+nie und verliert den Feldbezug der Komponenten-Meldungen (der Feldname landet als Message-CODE) –
+Kundinnen sehen dann die untranslatierbare Model-Exception „missing required field". Der Validator
+prüft Pflichtfelder, E-Mail-Format, PLZ je Land (mit §12), die gewählte Zahlart (Kachel nutzbar +
+Gateway konfiguriert) und meldet jeden Fehler AN SEINEM FELD. Projekt-Regeln über den Hook
+`updateCheckoutValidation(array $data, CheckoutComponentValidator $validator, bool &$valid)`.
+
+**Komponenten-Tausch ohne Subklasse:** `ShopCheckoutComponentConfig.component_classes` ist eine Map
+(`customer_details`, `shipping_address`, `billing_address`, `membership`, `notes`, `terms`).
+Mitgeliefert:
+- `ShopExtensions\Checkout\Component\BillingSameAsShippingAddress` – Häkchen „Rechnungsadresse wie
+  Lieferadresse"; die Rechnungsfelder sind nur Pflicht, wenn es abgewählt ist (serverseitig, ohne JS).
+- `ShopExtensions\Checkout\Component\OptionalMembership` – Häkchen „Kundenkonto anlegen" + EIN
+  Passwortfeld; die E-Mail kommt aus CustomerDetails. „Konto existiert schon"-Antworten sind
+  ratenbegrenzt (§14).
+Dazu `shipping_add_to_address_book` / `billing_add_to_address_book`.
+
+**Controller** (`ShopExtensions\CheckoutPageControllerExtension`):
+
+| Config | Standard | Bedeutung |
+|---|---|---|
+| `disable_cache` | `true` | Bugfix: die Kasse ist sitzungsgebunden und darf nie gecacht werden |
+| `payment_notice` | `true` | `$CheckoutPaymentNotice` nach abgebrochener/fehlgeschlagener Zahlung (omnipay-6-tauglicher Ersatz für `PaymentErrorMessage`) |
+| `hide_raw_gateway_messages` | `false` | rohe Provider-Meldung (Mollie: JSON) durch einen verständlichen Satz ersetzen |
+| `restore_unchecked_checkboxes` | `false` | core-Bug MERGE_IGNORE_FALSEISH: abgewähltes Häkchen kommt angehakt zurück |
+| `success_link_to_confirmation` | `false` | immer auf `<kasse>/order/<ID>` statt `Order::Link()` |
+| `terms_label_with_legal_links` | `false` | AGB-Häkchen mit Links auf AGB/Widerruf/Datenschutz |
+| `enable_summary_endpoint` | `false` | `POST <kasse>/summary` |
+| `summary_template` | `ShopExtensions/Checkout/CheckoutSummary` | Template der Zusammenfassung |
+| `summary_throttle_bucket` | `checkout-summary` | Bucket der Ratenbegrenzung (`''` = aus) |
+
+`POST <kasse>/summary` mit `Country` (ISO-2) + `SecurityID`: speichert das Land, rechnet den Warenkorb
+neu und antwortet `{isEmpty, html, totalNice, country}`. Fehler: 405 (kein POST), 429 (Limit),
+400 (CSRF), 422 (Land nicht lieferbar), 404 (Funktion aus). Hooks:
+`updateSummaryCountryAllowed(bool &$allowed, string $country, $order)` (z. B. „wir haben keinen
+Versandsatz für dieses Land"), `onSummaryCountry($country, $order)`,
+`updateSummaryResponseData(array &$data, $order)`.
+
+`$CheckoutErrorSummary` liefert je fehlerhaftem Feld `{ID, Title, Message}` für eine Fehlerliste am
+Formularanfang; `Title` bevorzugt das Attribut `data-summary-label` (kurzer Text statt ganzem
+Häkchen-Satz). Beispiel-Templates: `ShopExtensions/Checkout/ErrorSummary.ss`.
+
+**Rechtstexte + Migration** (`ShopExtensions\Checkout\SiteConfigCheckoutExtension`): has_one
+`CheckoutWithdrawalPage` / `CheckoutPrivacyPage` für das AGB-Häkchen und die einmalige Migration
+`migrate_send_receipt_email` (schaltet `SiteConfig.SendReceiptEmail` bei BESTEHENDEN Datensätzen
+einmalig ein – ohne sie bleibt der Rechnungsanhang nach dem Update stillschweigend aus).
+
+---
+
+## 12. Optional: Adresse mit Straße + Hausnummer
+
+`ShopExtensions\Address\StreetAddressExtension` (Vorlage `_config/streetaddress.yml.example`):
+getrennte Felder `StreetName` + `HouseNumber` (die Etiketten-APIs von DHL/UPS wollen sie getrennt),
+die einspaltige Kern-Adresse `Address` wird beim Speichern synchron gehalten („Hauptstraße 12"),
+Pflichtfelder über `required_address_fields`, `drop_fields` (Standard State/Phone), Länder-Dropdown
+mit `default_country` zuerst, PLZ-Prüfung je Land (`postcode_patterns`, Standard DE 5 / AT 4 Ziffern)
+im Formular UND als Modell-Sicherung, Vor-/Nachname aus dem aktuellen Warenkorb
+(`fill_names_from_cart`, nur im Web-Request – CLI/Queued Jobs sind sicher).
+
+Statische Helfer für eigene Prüfungen: `postcodePattern()`, `isValidPostcode()`, `postcodeMessage()`,
+`splitStreetLine()`, `isActive()`.
+
+**Nicht zusammen** mit einer projekteigenen Address-Extension registrieren, die ebenfalls
+`updateRequiredFields`/`updateFormFields` implementiert – die zuletzt registrierte gewinnt.
+
+---
+
+## 13. Optional: Lieferdatum
+
+`ShopExtensions\Delivery\DeliveryEstimate` + `SiteConfigDeliveryExtension` (Vorlage
+`_config/delivery.yml.example`): Versanddatum = heute + `DispatchLeadDays` Werktage, Lieferdatum =
+Versanddatum + `DeliveryDays` Werktage (beides im CMS gepflegt). `non_business_days` (Standard Sa/So),
+`date_pattern`, `timezone`, `locale`; Feiertage über den Hook
+`updateIsBusinessDay(bool &$isBusinessDay, DateTimeImmutable $date)`. Im Dev-Modus überschreibt
+`?deliverytoday=2026-09-18` das „heute".
+
+```php
+public function DeliveryEstimate(): DeliveryEstimate { return DeliveryEstimate::fromSiteConfig(); }
+```
+```html
+<% include ShopExtensions/Includes/DeliveryEstimate %>
+```
+
+---
+
+## 14. Ratenbegrenzung (RequestThrottle)
+
+`ShopExtensions\Security\RequestThrottle::attempt($request, $bucket, ?$key)` gibt `false` zurück,
+wenn das Limit erreicht ist (Antwort dann 429 + `Retry-After`, Sekunden aus
+`retryAfterSeconds()`). Ohne `$key` wird pro Host + IP gezählt, mit `$key` (z. B. `member-12`) pro
+Identität. Nur mutierende Requests zählen.
+
+```yaml
+ShopExtensions\Security\RequestThrottle:
+  buckets:
+    checkout-account: { max: 10, decay: 10 }   # decay in Minuten
+```
+
+**Map-Form verwenden.** SilverStripe mischt Maps je Schlüssel, hängt Listen aber ANEINANDER: aus
+`[10, 10]` (Modul-Standard) + `[200, 10]` (Projekt) wird `[10, 10, 200, 10]`. Die Klasse wertet
+deshalb bei Listen die LETZTEN beiden Werte aus – mit der Map-Form gibt es das Problem gar nicht.
+
+---
+
+## 15. Schnittstellen für andere Module (Hooks)
+
+| Hook / API | Wo | Wofür |
+|---|---|---|
+| `updatePurchaseData(array &$data, Order $order, Payment $payment)` | Extension auf `PurchaseService` | zusätzliche Gateway-Felder, NACHDEM das Modul seine gesetzt (und `PaymentMethod` entfernt) hat – z. B. Mollie `customerReference`, `sequenceType`, `mandateId` |
+| `updateOrderEmail(Email $email, string $type)` | Extension auf `Order` | Anhänge/Daten/Empfänger der Bestell-Mails; `$type` = confirmation, receipt, admin_notification, cancel_notification, status_change (gequeuet und direkt) |
+| `SilverShop\Model\Order.paid_status_gateways` | Config | welche Gateways die „Bezahlt"-Pipeline auslösen (Rechnungsnummer, Beleg-Mail, Admin-Mail) |
+| `PaymentOption::canUse(?Order $order)` | Extension auf `PaymentOption` | Kachel-Verfügbarkeit mit Warenkorb-Kontext; `false` = ausblenden, `null` = enthalten |
+| `updatePaymentLockName(string &$name, Payment $payment)` | Extension auf `PurchaseService` | eigener Sperrname beim Zahlungsabschluss |
+| `updateAccountNavItems(ArrayList $items)` | Extension auf `AccountPageController` | eigene Kontobereiche in die Navigation (`$AccountNavItems`) |
+| `updateCheckoutValidation($data, $validator, bool &$valid)` | Extension auf dem Validator | eigene Checkout-Prüfungen mit Feldbezug |
+| `ShopExtensions\Service\OrderPlacer` | Service | Bestellungen ohne Checkout/Session/Request platzieren, Zahlung erfassen, auf „Bezahlt" setzen |
+| `ShopExtensions\Security\RequestThrottle` | Service | Ratenbegrenzung für eigene Endpunkte |
+
+`OrderPlacer` (Abo-Folgelieferungen, Importe, Nachbestellungen aus dem Cron):
+
+```php
+$order = Order::create([...]); $order->write();            // Items/Adressen setzen, dann
+$order->calculate();
+$placer = OrderPlacer::singleton();
+$placer->place($order);                                     // Cart → Unpaid, Hook onPlaceOrder
+$placer->recordPayment($order, 'Mollie', 18.60, 'EUR', 'tr_…');
+$placer->markPaid($order);                                  // → Rechnungsnummer, Beleg-Mail, Admin-Mail
+```
+
+`OrderProcessor::placeOrder()` liest die Client-IP aus `Controller::curr()` und leert den
+Session-Warenkorb; beides gibt es im Cron/Queued Job nicht. `OrderPlacer` macht denselben Ablauf ohne
+Session und ohne Request (zusätzliche Hooks `onBeforeProgrammaticPlacement`,
+`onAfterProgrammaticPlacement`).
