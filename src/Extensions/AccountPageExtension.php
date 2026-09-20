@@ -8,6 +8,9 @@ use SilverStripe\i18n\i18n;
 use SilverStripe\Core\Extension;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Control\HTTPResponse;
+use SilverStripe\Control\Middleware\HTTPCacheControlMiddleware;
+use SilverStripe\Model\ArrayData;
+use SilverStripe\Model\List\ArrayList;
 use SilverStripe\Core\Convert;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Permission;
@@ -18,7 +21,8 @@ use SilverStripe\Security\Security;
  *
  * Adds member-facing order actions to the account area: streaming an order's
  * invoice PDF for download and rendering an order info page (guarded by a
- * canView permission check).
+ * canView permission check), the navigation data for the account menu
+ * ({@see self::AccountNavItems()}, hook updateAccountNavItems) and no-cache headers.
  *
  * @property \SilverShop\Page\AccountPageController $owner
  */
@@ -27,6 +31,64 @@ class AccountPageControllerExtension extends Extension{
         'receipt' => true,
         'infos' => true,
     );
+
+    /**
+     * Never cache the account area (bugfix; the pages are login bound).
+     *
+     * @config
+     * @var bool
+     */
+    private static $disable_cache = true;
+
+    protected function onAfterInit(): void
+    {
+        if ($this->owner->config()->get('disable_cache')) {
+            HTTPCacheControlMiddleware::singleton()->disableCache(true);
+        }
+    }
+
+    /**
+     * Navigation of the account area as {Link, Title, Key, Current} – for a template that renders its
+     * own account menu, and as the place where other modules hang their own account pages in:
+     *
+     *   public function updateAccountNavItems(ArrayList $items): void
+     *   {
+     *       $items->push(ArrayData::create([...]));
+     *   }
+     *
+     * `Key` names the entry (orders, addressbook, profile) so a project can map its own icons/labels
+     * onto it without matching on the title.
+     */
+    public function AccountNavItems(): ArrayList
+    {
+        $owner = $this->owner;
+        $action = (string) $owner->getAction();
+
+        $items = ArrayList::create([
+            ArrayData::create([
+                'Link' => $owner->Link(),
+                'Title' => _t(self::class . '.NavOrders', 'Bestellungen'),
+                'Key' => 'orders',
+                'Current' => in_array($action, ['', 'index', 'order', 'receipt', 'infos'], true),
+            ]),
+            ArrayData::create([
+                'Link' => $owner->Link('addressbook'),
+                'Title' => _t(self::class . '.NavAddresses', 'Adressen'),
+                'Key' => 'addressbook',
+                'Current' => $action === 'addressbook',
+            ]),
+            ArrayData::create([
+                'Link' => $owner->Link('editprofile'),
+                'Title' => _t(self::class . '.NavProfile', 'Profil & Passwort'),
+                'Key' => 'profile',
+                'Current' => $action === 'editprofile',
+            ]),
+        ]);
+
+        $owner->extend('updateAccountNavItems', $items);
+
+        return $items;
+    }
 
     /**
      * Stream the invoice PDF for the requested order as a file download.

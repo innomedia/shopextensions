@@ -25,6 +25,10 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
  *
  *  2. Per-mail-type control of the invoice PDF attachment, see {@see self::shouldAttachInvoice()}.
  *
+ * Extension point: before a mail is sent, updateOrderEmail($email, $type) is called on the ORDER
+ * ($type = confirmation | receipt | admin_notification | cancel_notification | status_change), in the
+ * queued job as well as on the direct path.
+ *
  * All public send* methods keep the parent signatures so callers are unaffected.
  */
 class CustomOrderEmailNotifier extends OrderEmailNotifier
@@ -257,6 +261,8 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
             'BaseURL' => Director::absoluteBaseURL(),
         ]);
 
+        $this->order->extend('updateOrderEmail', $email, 'admin_notification');
+
         if ($this->debugMode) {
             return $this->debug($email);
         }
@@ -293,6 +299,8 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
                 'Order' => $this->order,
                 'BaseURL' => Director::absoluteBaseURL(),
             ]);
+
+        $this->order->extend('updateOrderEmail', $email, 'cancel_notification');
 
         if ($this->debugMode) {
             return $this->debug($email);
@@ -356,6 +364,11 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
                 'BaseURL' => Director::absoluteBaseURL(),
             ]
         );
+
+        // Same extension point as the queued job (SendOrderEmailJob::sendEmail()); the mail type is
+        // derived from the template, because the parent signature has no type argument.
+        $type = str_contains((string) $template, 'Confirmation') ? 'confirmation' : 'receipt';
+        $this->order->extend('updateOrderEmail', $email, $type);
 
         return $email;
     }

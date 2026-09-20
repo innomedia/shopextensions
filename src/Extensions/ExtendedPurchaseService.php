@@ -34,6 +34,9 @@ class ExtendedPurchaseService extends Extension
      * custom payment method from the session, and the current locale language, then
      * removes the reserved "PaymentMethod" key to keep repayments valid.
      *
+     * Other extensions add their own fields through the hook
+     * updatePurchaseData(array &$data, Order $order, Payment $payment).
+     *
      * @param array $data Gateway request data, passed by reference and mutated in place.
      */
     public function onBeforePurchase(array &$data)
@@ -78,5 +81,11 @@ class ExtendedPurchaseService extends Extension
                 $data['paymentMethod'] = $option->PaymentMethod;
             }
         }
+
+        // Extension point for extra gateway fields, AFTER this extension has set (and unset) its own
+        // keys — a second PurchaseService extension would have an implicit, fragile ordering.
+        // Example (subscriptions): $data['customerReference'], $data['sequenceType'] = 'first',
+        // $data['mandateId'], $data['metadata'].
+        $this->owner->extend('updatePurchaseData', $data, $order, $payment);
     }
 }

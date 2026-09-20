@@ -123,7 +123,7 @@ class SendOrderEmailJob extends AbstractQueuedJob
             $email->setBCC(Email::config()->admin_email);
         }
 
-        $this->sendEmail($email, 'confirmation');
+        $this->sendEmail($email, 'confirmation', $order);
     }
 
     protected function sendReceipt(Order $order): void
@@ -142,7 +142,7 @@ class SendOrderEmailJob extends AbstractQueuedJob
             $email->setBCC(Email::config()->admin_email);
         }
 
-        $this->sendEmail($email, 'receipt');
+        $this->sendEmail($email, 'receipt', $order);
     }
 
     protected function sendAdminNotification(Order $order): void
@@ -178,7 +178,7 @@ class SendOrderEmailJob extends AbstractQueuedJob
             'BaseURL' => Director::absoluteBaseURL(),
         ]);
 
-        $this->sendEmail($email, 'admin_notification');
+        $this->sendEmail($email, 'admin_notification', $order);
     }
 
     protected function sendCancelNotification(Order $order): void
@@ -207,7 +207,7 @@ class SendOrderEmailJob extends AbstractQueuedJob
                 'BaseURL' => Director::absoluteBaseURL(),
             ]);
 
-        $this->sendEmail($email, 'cancel_notification');
+        $this->sendEmail($email, 'cancel_notification', $order);
     }
 
     protected function sendStatusChange(Order $order, string $title, string $note = ''): void
@@ -267,7 +267,7 @@ class SendOrderEmailJob extends AbstractQueuedJob
             }
         }
 
-        $this->sendEmail($email, 'status_change');
+        $this->sendEmail($email, 'status_change', $order);
 
         // Restore theme stack
         SSViewer::set_themes($adminThemeset);
@@ -309,8 +309,17 @@ class SendOrderEmailJob extends AbstractQueuedJob
         return $email;
     }
 
-    protected function sendEmail(Email $email, string $type): void
+    /**
+     * Sends the mail, after the extension point updateOrderEmail($email, $type) on the ORDER: other
+     * modules add attachments, data or recipients without replacing this job. $type is one of
+     * confirmation, receipt, admin_notification, cancel_notification, status_change.
+     */
+    protected function sendEmail(Email $email, string $type, ?Order $order = null): void
     {
+        if ($order) {
+            $order->extend('updateOrderEmail', $email, $type);
+        }
+
         try {
             $email->send();
             $this->addMessage("Successfully sent {$type} email");
