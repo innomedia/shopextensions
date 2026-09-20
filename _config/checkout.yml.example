@@ -1,0 +1,64 @@
+---
+Name: shopextensions-checkout-example
+After: '#shopextensions'
+---
+# =============================================================================
+# Opt-in: Checkout-Bausteine (Validator, Komponenten-Tausch, Zusammenfassung, Rechtstexte)
+#
+# Jeder Block ist einzeln zuschaltbar. Kopieren nach z. B. app/_config/checkout.yml und nur die
+# gewünschten Teile übernehmen. Danach `vendor/bin/sake db:build flush=1`.
+# =============================================================================
+
+# 1) Validator: prüft Pflichtfelder, E-Mail, PLZ und Zahlart VOR dem Speichern und setzt jede
+#    Meldung an ihr Feld (silvershop/core lässt $required leer und verliert den Feldbezug der
+#    Komponenten-Meldungen). Opt-in, weil sich dadurch ändert, welche Fehler Kundinnen sehen.
+SilverStripe\Core\Injector\Injector:
+  SilverShop\Forms\CheckoutComponentValidator:
+    class: ShopExtensions\Checkout\CheckoutComponentValidator
+
+# 2) Komponenten-Tausch ohne eigene Config-Subklasse: die Map ersetzt einzelne Klassen.
+#    - BillingSameAsShippingAddress: Häkchen „Rechnungsadresse wie Lieferadresse"
+#    - OptionalMembership: Häkchen „Kundenkonto anlegen" + ein Passwortfeld
+ShopExtensions\Checkout\ShopCheckoutComponentConfig:
+  component_classes:
+    billing_address: 'ShopExtensions\Checkout\Component\BillingSameAsShippingAddress'
+    membership: 'ShopExtensions\Checkout\Component\OptionalMembership'
+  # Adressen angemeldeter Kundinnen ins Adressbuch übernehmen
+  shipping_add_to_address_book: true
+  billing_add_to_address_book: true
+
+# 3) Controller-Bausteine (alle einzeln schaltbar, Standardwerte = bisheriges Verhalten)
+ShopExtensions\CheckoutPageControllerExtension:
+  # Kasse ist sitzungsgebunden → nie cachen (Bugfix, Standard an)
+  disable_cache: true
+  # „Zahlung fehlgeschlagen"-Hinweis ($CheckoutPaymentNotice im Template)
+  payment_notice: true
+  # Rohe Provider-Meldungen (Mollie antwortet mit JSON) durch einen verständlichen Satz ersetzen
+  hide_raw_gateway_messages: false
+  # core-Bug MERGE_IGNORE_FALSEISH: abgewähltes Häkchen kommt angehakt zurück
+  restore_unchecked_checkboxes: false
+  # Nach dem Kauf immer auf die Bestätigungsseite <kasse>/order/<ID> (statt Order::Link())
+  success_link_to_confirmation: false
+  # AGB-Häkchen mit Links auf AGB/Widerruf/Datenschutz beschriften (braucht Block 4)
+  terms_label_with_legal_links: false
+  # POST <kasse>/summary: Land wählen → Summen neu rechnen → {html, totalNice, isEmpty, country}
+  enable_summary_endpoint: false
+  summary_template: 'ShopExtensions/Checkout/CheckoutSummary'
+  summary_throttle_bucket: 'checkout-summary'
+
+# 4) Rechtstexte + einmalige Migration des Rechnungsanhangs
+SilverStripe\SiteConfig\SiteConfig:
+  extensions:
+    - ShopExtensions\Checkout\SiteConfigCheckoutExtension
+
+ShopExtensions\Checkout\SiteConfigCheckoutExtension:
+  # schaltet SendReceiptEmail bei bestehenden SiteConfig-Datensätzen EINMALIG ein
+  migrate_send_receipt_email: false
+
+# 5) Ratenbegrenzung der öffentlichen POST-Endpunkte ([Versuche, Minuten])
+ShopExtensions\Security\RequestThrottle:
+  buckets:
+    checkout-account: [10, 10]
+    checkout-summary: [60, 1]
+    registration: [5, 10]
+    cart-api: [120, 1]
