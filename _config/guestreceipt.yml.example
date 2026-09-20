@@ -1,0 +1,52 @@
+---
+Name: shopextensions-guestreceipt-example
+After: '#shopextensions'
+---
+# =============================================================================
+# Opt-in: Rechnung für Gäste ohne Konto (/rechnung/<token>)
+#
+# Jede Bestellung bekommt beim Platzieren ein unerratbares Token (32 Zufallsbytes = 64 Hex-Zeichen,
+# Spalte Order.ReceiptToken, indiziert). Wer das Token hat, sieht die Rechnung — ohne Anmeldung und
+# ohne Bestell-ID in der URL (keine hochzählbare Nummer, kein zweiter Check, der vergessen werden
+# kann). Gedacht für Gastbestellungen: die geschützten Routen (/konto/receipt/<ID>,
+# /OrderReceipt/StreamReceipt/<ID>) verlangen das besitzende Member bzw. einen CMS-User.
+#
+# Kopieren nach z. B. app/_config/guestreceipt.yml, danach `vendor/bin/sake db:build flush=1`
+# (legt die Spalte an und versieht bestehende bezahlte Bestellungen mit einem Token).
+#
+# WICHTIG beim Umstieg: Projekte mit eigener Kopie (Ghee\Shop\Extensions\OrderReceiptTokenExtension +
+# ReceiptController, Tietge\Books\…, vogelwerk ReceiptController) löschen ihre Klassen UND deren
+# YAML im selben Schritt — sonst sind zwei Extensions mit denselben Methoden registriert.
+# Die Spalte heißt überall gleich, bestehende Links bleiben also gültig.
+# =============================================================================
+
+SilverShop\Model\Order:
+  extensions:
+    - ShopExtensions\Receipt\OrderReceiptTokenExtension
+
+SilverStripe\Control\Director:
+  rules:
+    # Alternativ 'rechnung//$Token!': beide Schreibweisen funktionieren.
+    'rechnung': 'ShopExtensions\Controllers\GuestReceiptController'
+
+ShopExtensions\Controllers\GuestReceiptController:
+  # muss zur Director-Regel passen (baut die Links)
+  url_segment: 'rechnung'
+  # Status, zu denen es eine Rechnung gibt
+  receipt_statuses:
+    - Paid
+    - Sent
+    - Complete
+  # 'attachment' = Download, 'inline' = öffnet im Browser-Tab
+  content_disposition: 'attachment'
+  filename_pattern: 'Rechnung_{number}.pdf'
+  # Barrierefreie HTML-Ansicht unter ?format=html (dompdf erzeugt ein untagged PDF).
+  # Template: ShopExtensions/Layout/GuestReceipt.ss im Theme überschreiben.
+  enable_html_view: false
+  # GuestReceiptLink() absolut statt relativ (vogelwerk-Verhalten; Absolute*-Getter sind immer absolut)
+  absolute_links: false
+  # Seitenklasse, die der HTML-Ansicht das Seiten-Chrome gibt ('' = eigenständiges Template)
+  html_page_class: 'Page'
+  # Felder, die auf der transienten Seite gesetzt werden, z. B.:
+  # html_page_fields:
+  #   ShowBreadcrumbs: false
