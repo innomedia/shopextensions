@@ -2,6 +2,7 @@
 namespace ShopExtensions;
 
 use Dompdf\Dompdf;
+use ShopExtensions\Model\NumberSequence;
 use SilverShop\Checkout\OrderEmailNotifier;
 use SilverShop\Model\Order;
 use SilverShop\Page\AccountPage;
@@ -97,6 +98,25 @@ class OrderExtension extends Extension{
      * @var bool
      */
     private static $enable_delivery_slip = false;
+
+    /**
+     * Gateways whose payment moves the order through the "Paid" pipeline in
+     * {@see self::onStatusChange()} (Paid date, items onPayment, invoice number, receipt and admin
+     * mail). Configurable so projects/modules can add their own gateway (e.g. a subscription
+     * renewal recorded without omnipay).
+     *
+     * @config
+     * @var array
+     */
+    private static $paid_status_gateways = ['Stripe', 'PayPal_Express', 'PayPal_Pro', 'Mollie', 'Manual'];
+
+    /**
+     * Index on the invoice number: the number sequence reads MAX(InvoiceNumber), and support looks
+     * orders up by their invoice number.
+     */
+    private static $indexes = [
+        'InvoiceNumber' => true,
+    ];
 
     private static $db = [
         'BillingName' => 'Varchar',
@@ -443,21 +463,22 @@ class OrderExtension extends Extension{
 
     /**
      * Assign the next invoice number to this order, if it doesn't have one yet.
-     * The starting number is read from SiteConfig.InvoiceNumberStart and falls back
-     * to self::DEFAULT_INVOICE_START, so ported projects behave as before.
-     * Always (re)sets the invoice date to preserve the previous behaviour.
+     *
+     * The number comes from the persistent counter {@see NumberSequence}, NOT from
+     * "MAX(InvoiceNumber) + 1" over the existing orders: that maximum goes down when the order with
+     * the highest number is deleted (test data, GDPR erasure, CMS delete), and the next order then
+     * got the SAME number again — two concurrent payments could also read the same maximum. An
+     * invoice number must never be issued twice.
+     *
+     * The counter only ever increases and always stays above the highest number currently on an
+     * order (so hand-set/imported numbers heal it). SiteConfig.InvoiceNumberStart still only applies
+     * while no invoice exists. Always (re)sets the invoice date to preserve the previous behaviour.
      */
     protected function assignInvoiceNumber()
     {
         if (!$this->owner->InvoiceNumber) {
             $start = (int) (SiteConfig::current_site_config()->InvoiceNumberStart ?: self::DEFAULT_INVOICE_START);
-            $maxRef = Order::get()->sort('InvoiceNumber DESC')->first();
-
-            if ($maxRef && $maxRef->InvoiceNumber) {
-                $this->owner->InvoiceNumber = (int) $maxRef->InvoiceNumber + 1;
-            } else {
-                $this->owner->InvoiceNumber = $start;
-            }
+            $this->owner->InvoiceNumber = NumberSequence::nextInvoiceNumber($start);
         }
         $this->owner->InvoiceDate = date('Y-m-d H:i:s');
     }
@@ -651,7 +672,9 @@ class OrderExtension extends Extension{
             $this->stampStornoDate();
         }
 
-        if ($toStatus == 'Paid' && $payment && in_array($payment->Gateway, ['Stripe', 'PayPal_Express', 'PayPal_Pro', 'Mollie','Manual'])  ) {
+        $paidGateways = (array) $this->owner->config()->get('paid_status_gateways');
+
+        if ($toStatus == 'Paid' && $payment && in_array($payment->Gateway, $paidGateways, true)) {
             $this->owner->Paid = DBDatetime::now()->Rfc2822();
             foreach ($this->owner->Items() as $item) {
                 $item->onPlacement();
