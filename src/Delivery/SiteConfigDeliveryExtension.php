@@ -31,10 +31,14 @@ class SiteConfigDeliveryExtension extends Extension
 
     public function updateCMSFields(FieldList $fields): void
     {
-        $fields->removeByName(['DispatchLeadDays', 'DeliveryDays']);
+        // add_cms_fields false = the project places the two fields itself (same column names). Don't
+        // touch the FieldList at all then: extensions run in registration order, and removing the
+        // fields here would also remove the ones the project just added.
         if (!$this->getOwner()->config()->get('add_cms_fields')) {
             return;
         }
+
+        $fields->removeByName(['DispatchLeadDays', 'DeliveryDays']);
 
         $tab = (string) $this->getOwner()->config()->get('cms_tab');
         if (!$fields->fieldByName('Root.Shop.ShopTabs')) {
