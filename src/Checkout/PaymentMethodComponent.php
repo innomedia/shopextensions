@@ -46,13 +46,16 @@ class PaymentMethodComponent extends Payment
      *
      * @return ArrayList
      */
-    protected function availableOptions(): ArrayList
+    protected function availableOptions(?Order $order = null): ArrayList
     {
-        return self::availablePaymentOptions();
+        return self::availablePaymentOptions($order);
     }
 
     /**
      * Active, usable payment options whose gateway is actually supported by the site.
+     *
+     * $order (when known) is handed to PaymentOption::canUse(), so availability rules can look at the
+     * cart — e.g. offer only mandate-capable methods for a subscription order.
      *
      * Static so the same tile set can be reused outside the checkout — notably by
      * {@see \ShopExtensions\OrderActionsFormExtension} when re-paying an open order from the
@@ -60,12 +63,12 @@ class PaymentMethodComponent extends Payment
      *
      * @return ArrayList
      */
-    public static function availablePaymentOptions(): ArrayList
+    public static function availablePaymentOptions(?Order $order = null): ArrayList
     {
         $supported = GatewayInfo::getSupportedGateways();
         $list = ArrayList::create();
         foreach (PaymentOption::get()->filter('Enabled', 1)->sort('Sort ASC') as $option) {
-            if ($option->PaymentGateway && isset($supported[$option->PaymentGateway]) && $option->canUse()) {
+            if ($option->PaymentGateway && isset($supported[$option->PaymentGateway]) && $option->canUse($order)) {
                 $list->push($option);
             }
         }
@@ -78,7 +81,7 @@ class PaymentMethodComponent extends Payment
      */
     public function getFormFields(Order $order): FieldList
     {
-        $options = $this->availableOptions();
+        $options = $this->availableOptions($order);
         $source = [];
         foreach ($options as $option) {
             $source[$option->ID] = $option->Title;
@@ -129,7 +132,7 @@ class PaymentMethodComponent extends Payment
         $option = PaymentOption::get()->byID($data['PaymentMethod']);
         $supported = GatewayInfo::getSupportedGateways();
 
-        if (!$option || !$option->canUse() || !isset($supported[$option->PaymentGateway])) {
+        if (!$option || !$option->canUse($order) || !isset($supported[$option->PaymentGateway])) {
             $result->addFieldError(
                 'PaymentMethod',
                 _t(__CLASS__ . '.InvalidPaymentMethod', 'Die gewählte Zahlart ist nicht verfügbar.'),

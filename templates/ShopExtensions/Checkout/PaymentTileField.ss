@@ -14,16 +14,21 @@
         border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb inset; font-weight: 600;
     }
     .payment-tiles .payment-tile__icon { height: 28px; width: auto; }
+    .payment-tiles .payment-tile__text { display: flex; flex-direction: column; }
+    .payment-tiles .payment-tile__description { font-weight: 400; font-size: .875em; }
 </style>
 <ul class="optionset payment-tiles" id="$ID" role="radiogroup">
     <% loop $OptionList %>
         <li class="payment-tile val{$Option.PaymentGateway}">
             <label for="$HolderID">
-                <input id="$HolderID" class="payment-tile__radio" type="radio" name="$Up.Name" value="$Value"<% if $Selected %> checked="checked"<% end_if %> />
+                <input id="$HolderID" class="payment-tile__radio" type="radio" name="$Up.Name" value="$Value"<% if $Selected %> checked="checked"<% end_if %><% if $Description %> aria-describedby="$DescriptionID"<% end_if %> />
                 <% if $Image.Exists %>
                     <img src="$Image.URL" alt="$Title.ATT" class="payment-tile__icon" />
                 <% end_if %>
-                <span class="payment-tile__title">$Title.XML</span>
+                <span class="payment-tile__text">
+                    <span class="payment-tile__title">$Title.XML</span>
+                    <% if $Description %><span class="payment-tile__description" id="$DescriptionID">$Description.XML</span><% end_if %>
+                </span>
             </label>
         </li>
     <% end_loop %>

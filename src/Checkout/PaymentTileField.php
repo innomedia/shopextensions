@@ -52,8 +52,10 @@ class PaymentTileField extends OptionsetField
                 'Value' => $option->ID,
                 'Title' => $option->Title,
                 'Image' => $option->Image(),
+                'Description' => (string) $option->TileDescription,
                 'Selected' => ((string) $option->ID === (string) $selected),
                 'HolderID' => $this->ID() . '_' . $option->ID,
+                'DescriptionID' => $this->ID() . '_' . $option->ID . '_desc',
             ]));
         }
         return $list;

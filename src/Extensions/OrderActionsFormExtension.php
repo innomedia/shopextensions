@@ -7,6 +7,8 @@ use ShopExtensions\Checkout\PaymentTileField;
 use SilverShop\Model\Order;
 use SilverStripe\Core\Extension;
 use SilverStripe\Forms\Validation\RequiredFieldsValidator;
+use SilverStripe\Model\List\ArrayList;
+use SilverStripe\Omnipay\GatewayInfo;
 
 /**
  * Extends SilverShop's {@see \SilverShop\Forms\OrderActionsForm} (the "pay an open order" form on
@@ -21,6 +23,10 @@ use SilverStripe\Forms\Validation\RequiredFieldsValidator;
  *
  * OPT-IN and self-guarding: if no usable PaymentOption exists (feature off / none configured), the
  * default gateway list is left untouched, so the customer can always pay.
+ *
+ * Config `SilverShop\Model\Order.repay_exclude_manual_gateways` (default false): drop manual
+ * gateways (Vorkasse/invoice) from the repay tiles and remove the payment block entirely when no
+ * online option remains.
  *
  * @property \SilverShop\Forms\OrderActionsForm $owner
  */
@@ -39,7 +45,27 @@ class OrderActionsFormExtension extends Extension
             return;
         }
 
-        $options = PaymentMethodComponent::availablePaymentOptions();
+        $options = PaymentMethodComponent::availablePaymentOptions($order);
+
+        // Paying an open order again with "Vorkasse"/invoice makes no sense (the customer simply
+        // transfers the money), so projects can drop manual gateways here. Without an online option
+        // left, the whole payment block goes away instead of offering an empty list.
+        if ($order->config()->get('repay_exclude_manual_gateways')) {
+            $online = ArrayList::create();
+            foreach ($options as $option) {
+                if (!GatewayInfo::isManual((string) $option->PaymentGateway)) {
+                    $online->push($option);
+                }
+            }
+            $options = $online;
+
+            if (!$options->count()) {
+                $form->Fields()->removeByName(['MakePaymentHeader', 'Outstanding', 'PaymentMethod']);
+                $form->Actions()->removeByName('action_dopayment');
+                return;
+            }
+        }
+
         if (!$options->count()) {
             // No tiles configured → keep SilverShop's default gateway radio list (fallback).
             return;
