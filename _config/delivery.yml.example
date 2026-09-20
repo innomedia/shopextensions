@@ -1,0 +1,36 @@
+---
+Name: shopextensions-delivery-example
+After: '#shopextensions'
+---
+# =============================================================================
+# Opt-in: Voraussichtliches Lieferdatum (ShopExtensions\Delivery\DeliveryEstimate)
+#
+#   Versanddatum  = heute + DispatchLeadDays Werktage
+#   Lieferdatum   = Versanddatum + DeliveryDays Werktage
+#
+# Beide Werte pflegt die Redaktion unter Einstellungen → Shop. Feiertage kennt das Modul nicht
+# (Hook updateIsBusinessDay), eine Bestellannahmezeit ebenfalls nicht.
+#
+# Im Template (Scope mit $DeliveryEstimate, z. B. ein Controller mit
+# `public function DeliveryEstimate() { return DeliveryEstimate::fromSiteConfig(); }`):
+#   <% include ShopExtensions/Includes/DeliveryEstimate %>
+#
+# Kopieren nach z. B. app/_config/delivery.yml, danach `vendor/bin/sake db:build flush=1`.
+# =============================================================================
+
+SilverStripe\SiteConfig\SiteConfig:
+  extensions:
+    - ShopExtensions\Delivery\SiteConfigDeliveryExtension
+
+ShopExtensions\Delivery\SiteConfigDeliveryExtension:
+  cms_tab: 'Root.Shop.ShopTabs.Delivery'
+  # false, wenn das Projekt die beiden Felder selbst platziert (gleiche Spaltennamen)
+  add_cms_fields: true
+
+ShopExtensions\Delivery\DeliveryEstimate:
+  timezone: 'Europe/Berlin'
+  # ISO-Wochentage ohne Versand/Zustellung (1 = Montag … 7 = Sonntag)
+  non_business_days: [6, 7]
+  date_pattern: 'EEEE, d. MMMM'
+  # leer = aktuelle i18n-Locale
+  locale: ''
