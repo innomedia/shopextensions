@@ -89,14 +89,11 @@
                             <% if $Link %>
                                 <a href="$Link" title="<%t SilverShop\Generic.ReadMoreTitle "Click here to read more on &quot;{Title}&quot;" Title=$TableTitle %>">
                                     $TableTitle
-                                    <% if $Product(true).ArticleNumber %>
-                                         - Nr. $Product(true).ArticleNumber
-                                    <% else_if $Product(true).InternalItemID %>
-                                        - Nr. $Product(true).InternalItemID
-                                    <% end_if %>
+                                    <%-- Article number of the BOUGHT item: with variations the variation SKU, not the product number. --%>
+                                    <% if $ArticleNumber %> - Nr. $ArticleNumber<% end_if %>
                                 </a>
                             <% else %>
-                                - Nr. $Product(true).ArticleNumber $TableTitle
+                                <% if $ArticleNumber %>- Nr. $ArticleNumber <% end_if %>$TableTitle
                             <% end_if %>
                             <% if $SubTitle %>
                                 <span class="subtitle">$SubTitle</span>

@@ -2,6 +2,7 @@
 namespace ShopExtensions;
 
 use Dompdf\Dompdf;
+use Psr\Log\LoggerInterface;
 use ShopExtensions\Model\NumberSequence;
 use SilverShop\Checkout\OrderEmailNotifier;
 use SilverShop\Model\Order;
@@ -14,13 +15,16 @@ use SilverStripe\Control\Director;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Convert;
 use SilverStripe\Core\Extension;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\Debug;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\HTMLEditor\HTMLEditorField;
 use SilverStripe\Forms\LiteralField;
 use SilverStripe\Model\ArrayData;
 use SilverStripe\Model\List\ArrayList;
+use SilverStripe\Omnipay\GatewayInfo;
 use SilverStripe\Omnipay\Model\Payment;
+use SilverStripe\Omnipay\Service\ServiceFactory;
 use SilverStripe\ORM\DB;
 use SilverStripe\ORM\FieldType\DBCurrency;
 use SilverStripe\ORM\FieldType\DBDatetime;
@@ -110,6 +114,25 @@ class OrderExtension extends Extension{
      * @var array
      */
     private static $paid_status_gateways = ['Stripe', 'PayPal_Express', 'PayPal_Pro', 'Mollie', 'Manual'];
+
+    /**
+     * Settle (capture) an authorized Manual payment when the order is set to Paid. Without it a
+     * Vorkasse order that an admin marks as paid keeps its payment on "Authorized", and invoice PDF
+     * and HTML receipt then say "Autorisiert" under the heading "Bezahlt". The capture runs through
+     * omnipay (manual gateway: always successful), so the payment keeps a proper message history.
+     *
+     * @config
+     * @var bool
+     */
+    private static $capture_manual_payment_on_paid = true;
+
+    /**
+     * Set in onStatusChange() when the Paid transition should settle an authorized Manual payment;
+     * acted on in onAfterWrite(), i.e. once "Paid" is actually in the database.
+     *
+     * @var bool
+     */
+    protected $capturePending = false;
 
     /**
      * Index on the invoice number: the number sequence reads MAX(InvoiceNumber), and support looks
@@ -687,6 +710,11 @@ class OrderExtension extends Extension{
                 $item->write();
             }
 
+            // An authorized Manual payment (Vorkasse/Rechnung) is only settled once someone sets the
+            // order to Paid — do that in onAfterWrite(), when "Paid" is in the database, so
+            // silvershop's own onCaptured() handler cannot start a second Unpaid→Paid round trip.
+            $this->capturePending = (bool) $this->owner->config()->get('capture_manual_payment_on_paid');
+
             //all payment is settled
             $this->onPaid();
 
@@ -734,6 +762,39 @@ class OrderExtension extends Extension{
             'UPDATE "SilverShop_Order" SET "AdminNotificationSent" = ? WHERE "ID" = ?',
             [$now, $this->owner->ID]
         );
+    }
+
+    /**
+     * Settle the Manual payment of an order that has just become Paid (see
+     * $capture_manual_payment_on_paid). Runs after the write so the order is "Paid" in the database
+     * when silvershop's PaymentExtension::onCaptured() calls OrderProcessor::completePayment() —
+     * that call then finds an already paid order and does nothing, instead of running the whole
+     * Unpaid→Paid transition (and its mails) a second time.
+     */
+    public function onAfterWrite()
+    {
+        if (!$this->capturePending) {
+            return;
+        }
+        $this->capturePending = false;
+
+        foreach (Payment::get()->filter(['OrderID' => $this->owner->ID, 'Status' => 'Authorized']) as $payment) {
+            if (!GatewayInfo::isManual($payment->Gateway) || !$payment->canCapture()) {
+                continue;
+            }
+            try {
+                ServiceFactory::create()
+                    ->getService($payment, ServiceFactory::INTENT_CAPTURE)
+                    ->initiate();
+            } catch (\Exception $e) {
+                // Never let a capture problem break the CMS save: the order stays Paid, the payment
+                // keeps its old status and the log says why.
+                Injector::inst()->get(LoggerInterface::class)->warning(
+                    'ShopExtensions: capturing manual payment ' . $payment->ID . ' of order '
+                        . $this->owner->ID . ' failed: ' . $e->getMessage()
+                );
+            }
+        }
     }
 
     /**

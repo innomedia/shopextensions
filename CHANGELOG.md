@@ -18,6 +18,22 @@ ist die Paid-Mail weiterhin die erste und einzige Betreibermail.
 
 Migration: `vendor/bin/sake db:build flush=1` (neues Feld). Sonst nichts.
 
+### Beleg zeigt die gekaufte Artikelnummer und den richtigen Zahlungsstatus (Bugfix, standardmäßig an)
+
+- Rechnung, Stornorechnung und Lieferschein haben `$Product(true).InternalItemID` ausgegeben, also bei
+  Varianten die Nummer des **Produkts** („GHEE") statt der Varianten-SKU („GHEE-ROSA-500") — die
+  HTML-Fassung derselben Rechnung zeigte die Variante. Neu: `OrderItemExtension::ArticleNumber()`
+  nimmt die Nummer des gekauften Buyables (versioniert, also wie beim Kauf) und fällt auf das Produkt
+  zurück; die drei Vorlagen nutzen nur noch `$ArticleNumber`.
+- Eine per Hand auf „Bezahlt" gesetzte Vorkasse-Bestellung ließ ihre Manual-Zahlung auf „Autorisiert"
+  stehen; Rechnung und HTML-Beleg zeigten dann „Autorisiert" unter der Überschrift „Bezahlt". Neu
+  erfasst `OrderExtension::onAfterWrite()` die autorisierte Manual-Zahlung über Omnipay (Config
+  `Order.capture_manual_payment_on_paid`, Vorgabe an). Bewusst **nach** dem Schreiben: dann ist die
+  Bestellung in der Datenbank bezahlt, und `OrderProcessor::completePayment()` aus dem
+  `onCaptured`-Hook von silvershop läuft nicht ein zweites Mal durch den Unpaid→Paid-Übergang.
+
+Migration: keine. Wer den bisherigen Zustand braucht, setzt `capture_manual_payment_on_paid: false`.
+
 ### Rechnungsnummern werden nie wiederverwendet (Bugfix, wirkt sofort)
 
 `OrderExtension::assignInvoiceNumber()` hat die nächste Nummer als `MAX(InvoiceNumber) + 1` über die

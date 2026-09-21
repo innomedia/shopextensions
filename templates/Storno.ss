@@ -74,12 +74,8 @@
                     <% loop $Items %>
                     <tr class="itemRow $EvenOdd $FirstLast">
                         <td class="product title" scope="row"<% if $Last %> style="border-bottom:1pt solid #666;"<% end_if %>>
-                            <% if $Product(true).ArticleNumber %>
-                                Nr. $Product(true).ArticleNumber
-                            <% else_if $Product(true).InternalItemID %>
-                                Nr. $Product(true).InternalItemID
-                            <% end_if %>
-                            $TableTitle
+                            <%-- Article number of the BOUGHT item: with variations the variation SKU, not the product number. --%>
+                            <% if $ArticleNumber %>Nr. $ArticleNumber <% end_if %>$TableTitle
                             <% if $SubTitle %>
                                 <span class="subtitle">$SubTitle</span>
                             <% end_if %>

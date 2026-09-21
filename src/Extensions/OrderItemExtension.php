@@ -44,6 +44,43 @@ class OrderItemExtension extends Extension{
     }
 
     /**
+     * The article number to print on documents (invoice, cancellation invoice, delivery slip).
+     *
+     * Takes it from the thing actually bought, i.e. this line's buyable: with product variations
+     * that is the variation and its own SKU ("GHEE-ROSA-500"), not the parent product's number
+     * ("GHEE"). The PDF templates used to read $Product(true).InternalItemID and so printed the
+     * product number for every variation, while the HTML receipt already showed the variation SKU.
+     *
+     * Order of preference: the buyable's ArticleNumber (a field some projects add), its
+     * InternalItemID, then the same two on the parent product. Empty string when nothing is set.
+     * The buyable is the versioned one (as bought), so a later SKU change cannot alter documents of
+     * orders that are already placed.
+     *
+     * @return string
+     */
+    public function ArticleNumber(): string
+    {
+        $candidates = [];
+        if ($this->owner->hasMethod('Buyable') && ($buyable = $this->owner->Buyable())) {
+            $candidates[] = $buyable;
+        }
+        if ($this->owner->hasMethod('Product') && ($product = $this->owner->Product(true))) {
+            $candidates[] = $product;
+        }
+
+        foreach ($candidates as $candidate) {
+            foreach (['ArticleNumber', 'InternalItemID'] as $field) {
+                $value = $candidate->hasField($field) ? trim((string) $candidate->getField($field)) : '';
+                if ($value !== '') {
+                    return $value;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    /**
      * The item's unit price as a negated, display-ready currency string, for the cancellation
      * invoice (Stornorechnung). See {@see \ShopExtensions\OrderExtension::formatNegativeCurrency()}.
      *
