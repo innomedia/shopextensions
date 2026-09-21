@@ -21,6 +21,7 @@ use SilverStripe\Forms\LiteralField;
 use SilverStripe\Model\ArrayData;
 use SilverStripe\Model\List\ArrayList;
 use SilverStripe\Omnipay\Model\Payment;
+use SilverStripe\ORM\DB;
 use SilverStripe\ORM\FieldType\DBCurrency;
 use SilverStripe\ORM\FieldType\DBDatetime;
 use SilverStripe\ORM\FieldType\DBField;
@@ -136,6 +137,10 @@ class OrderExtension extends Extension{
         // order that is already fully covered by another payment (e.g. customer switched SEPA→card
         // and both settled). Flags the order for a refund review in the CMS.
         'HasDuplicatePayment' => 'Boolean',
+        // When the operator's "new order" notification was sent for this order. Stamped by
+        // CustomOrderEmailNotifier::sendAdminNotification(), read by onStatusChange() to avoid a
+        // second, identical "Neue Bestellung" mail when the order later becomes Paid.
+        'AdminNotificationSent' => 'Datetime',
     ];
 
     /**
@@ -685,9 +690,50 @@ class OrderExtension extends Extension{
             //all payment is settled
             $this->onPaid();
 
-            $notifier = CustomOrderEmailNotifier::create($this->owner);
-            $notifier->sendAdminNotification();
+            if ($this->shouldSendPaidAdminNotification()) {
+                $notifier = CustomOrderEmailNotifier::create($this->owner);
+                $notifier->sendAdminNotification();
+            }
         }
+    }
+
+    /**
+     * Whether the Paid transition should still tell the operator about this order.
+     *
+     * Only relevant for shops that let this module announce a Manual (Vorkasse/invoice) order to
+     * the operator at PLACEMENT already (CustomOrderEmailNotifier.send_confirmation_for_manual_payment).
+     * Those shops used to get the identical "Neue Bestellung Nr. X" mail a second time when the
+     * order was later set to Paid. With the opt-in off nothing changes: the Paid mail is the first
+     * and only operator notification, exactly as before.
+     */
+    protected function shouldSendPaidAdminNotification(): bool
+    {
+        if (!CustomOrderEmailNotifier::config()->get('send_confirmation_for_manual_payment')) {
+            return true;
+        }
+
+        return !$this->owner->AdminNotificationSent;
+    }
+
+    /**
+     * Remember that the operator's new-order notification went out for this order.
+     *
+     * Written with a targeted UPDATE instead of Order::write(): the stamp is set from inside the
+     * mailer, which runs during Order::onBeforeWrite() (status transition) as well as outside any
+     * write, and a full write() there would either recurse or clobber the in-flight record.
+     */
+    public function markAdminNotificationSent(): void
+    {
+        if (!$this->owner->isInDB() || $this->owner->AdminNotificationSent) {
+            return;
+        }
+
+        $now = DBDatetime::now()->Rfc2822();
+        $this->owner->AdminNotificationSent = $now;
+        DB::prepared_query(
+            'UPDATE "SilverShop_Order" SET "AdminNotificationSent" = ? WHERE "ID" = ?',
+            [$now, $this->owner->ID]
+        );
     }
 
     /**

@@ -4,6 +4,20 @@ Format: neueste Version zuerst. „Migration" = was ein Projekt beim Update tun 
 
 ## Unveröffentlicht (geplant als 6.1.0)
 
+### Betreiber-Mail „Neue Bestellung" nur noch einmal (Bugfix, wirkt nur mit dem Vorkasse-Opt-in)
+
+Mit `CustomOrderEmailNotifier.send_confirmation_for_manual_payment: true` (Vorkasse/Rechnung: Kunden-
+und Betreibermail schon bei der Bestellung) kam dieselbe Mail „Neue Bestellung Nr. X" ein zweites Mal,
+sobald jemand die Bestellung im CMS auf „Bezahlt" setzte — im Postfach nicht von der ersten zu
+unterscheiden.
+
+Neu: `Order.AdminNotificationSent` (Datetime) wird in `CustomOrderEmailNotifier::sendAdminNotification()`
+gesetzt; der Paid-Zweig in `OrderExtension::onStatusChange()` verschickt die Benachrichtigung nur noch,
+wenn sie für diese Bestellung noch nicht verschickt wurde. **Ohne das Opt-in ändert sich nichts**: dort
+ist die Paid-Mail weiterhin die erste und einzige Betreibermail.
+
+Migration: `vendor/bin/sake db:build flush=1` (neues Feld). Sonst nichts.
+
 ### Rechnungsnummern werden nie wiederverwendet (Bugfix, wirkt sofort)
 
 `OrderExtension::assignInvoiceNumber()` hat die nächste Nummer als `MAX(InvoiceNumber) + 1` über die

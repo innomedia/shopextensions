@@ -192,10 +192,19 @@ class CustomOrderEmailNotifier extends OrderEmailNotifier
     }
 
     /**
-     * Send admin notification via queued job
+     * Send admin notification via queued job.
+     *
+     * Stamps Order.AdminNotificationSent first, so a later Unpaid→Paid transition can tell that the
+     * operator has already been told about this order (with Vorkasse the notification goes out at
+     * placement, see PaymentExtension::sendManualPaymentConfirmation()) and does not send the
+     * identical "Neue Bestellung Nr. X" mail a second time.
      */
     public function sendAdminNotification(): bool|string
     {
+        if ($this->order && $this->order->hasMethod('markAdminNotificationSent')) {
+            $this->order->markAdminNotificationSent();
+        }
+
         return $this->queueOrSendEmail('admin_notification');
     }
 
