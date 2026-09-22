@@ -2,7 +2,7 @@
 
 Format: neueste Version zuerst. „Migration" = was ein Projekt beim Update tun muss.
 
-## Unveröffentlicht (geplant als 6.1.0)
+## 6.1.0 (2026-09-22)
 
 ### Betreiber-Mail „Neue Bestellung" nur noch einmal (Bugfix, wirkt nur mit dem Vorkasse-Opt-in)
 
