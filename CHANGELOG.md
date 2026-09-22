@@ -2,7 +2,7 @@
 
 Format: neueste Version zuerst. „Migration" = was ein Projekt beim Update tun muss.
 
-## 6.1.2 (unveröffentlicht)
+## 6.1.2 (2026-09-22)
 
 ### Abgelehnter Zahlungsstart bleibt ein Fehler, auch mit asynchronen Benachrichtigungen (Bugfix, standardmäßig an)
 
