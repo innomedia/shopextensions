@@ -103,6 +103,9 @@ SilverStripe\Omnipay\Service\PurchaseService:
   # Webhook and browser return arrive at the same second → complete the payment only once
   # (otherwise every order mail goes out twice).
   - ShopExtensions\Payment\PaymentCompletionLockExtension
+  # With use_async_notification a payment start the provider REJECTS was flagged "pending": the
+  # customer landed on the success page without any payment. Turn it back into an error (Mollie).
+  - ShopExtensions\Payment\AsyncPurchaseErrorExtension
 # Assign the invoice number when a Manual/invoice payment is authorized/captured. The
 # Cart→Unpaid transition happens before the Payment exists, so this can't be done in
 # Order::onStatusChange (see PaymentExtension for the full rationale).

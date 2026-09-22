@@ -5,6 +5,7 @@
         <ul><% loop $CheckoutErrorSummary %><li><a href="#$ID">$Title: $Message</a></li><% end_loop %></ul>
     </div>
 <% end_if %>
-<% with $CheckoutPaymentNotice %>
+<%-- if first: <% with %> renders its block even when the value is null (empty notice). --%>
+<% if $CheckoutPaymentNotice %><% with $CheckoutPaymentNotice %>
     <div class="checkout-payment-notice" role="alert"><p><strong>$Title</strong> $Text</p></div>
-<% end_with %>
+<% end_with %><% end_if %>

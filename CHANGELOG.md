@@ -2,6 +2,31 @@
 
 Format: neueste Version zuerst. „Migration" = was ein Projekt beim Update tun muss.
 
+## 6.1.2 (unveröffentlicht)
+
+### Abgelehnter Zahlungsstart bleibt ein Fehler, auch mit asynchronen Benachrichtigungen (Bugfix, standardmäßig an)
+
+Mit `GatewayInfo.<Gateway>.use_async_notification: true` (nötig für SEPA/Überweisung) markiert
+silverstripe-omnipay eine Zahlungsanfrage, die der Anbieter **ablehnt**, nie als Fehler
+(`PaymentService::wrapOmnipayResponse()` setzt `SERVICE_PENDING`). Lehnt Mollie ab (HTTP 422:
+ungültige Webhook-URL, Betrag unter dem Minimum der Methode, Methode nicht aktiv, …), stand die
+Zahlung auf „PendingPurchase" und die Kundin landete auf der **Erfolgsseite** – ohne dass beim
+Anbieter eine Zahlung existierte oder je ein Webhook käme.
+
+Neu: `ShopExtensions\Payment\AsyncPurchaseErrorExtension` am `PurchaseService`. Bei Mollie kommt eine
+angelegte Zahlung immer als Weiterleitung auf die Bezahlseite zurück (auch Überweisung/SEPA); „weder
+erfolgreich noch Weiterleitung" beim **Start** ist also eine Ablehnung und wird wieder zum Fehler:
+omnipay schreibt eine `PurchaseError`-Meldung, die Zahlung bleibt `Created`, und die Kasse behandelt
+es wie jede gescheiterte Zahlung (6.1.1: Bestellseite + `$CheckoutPaymentNotice`). Gilt nur für die
+Gateways in `AsyncPurchaseErrorExtension.gateways` (Vorgabe `[Mollie]`).
+
+### `ErrorSummary.ss`: kein leerer Zahlungshinweis mehr
+
+`<% with $CheckoutPaymentNotice %>` rendert in SS6 auch bei `null` – ein leerer Hinweis stand in jeder
+Kasse. Jetzt mit `<% if %>` davor. Projekte mit eigener Vorlage prüfen dieselbe Stelle.
+
+Migration: `sake db:build flush=1` (neue Extension). Sonst nichts.
+
 ## 6.1.1 (2026-09-22)
 
 ### Länderauswahl alphabetisch nach deutschem Namen (Bugfix, wirkt sofort)
