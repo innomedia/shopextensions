@@ -4,6 +4,14 @@ Format: neueste Version zuerst. „Migration" = was ein Projekt beim Update tun 
 
 ## 6.1.1 (unveröffentlicht)
 
+### Länderauswahl alphabetisch nach deutschem Namen (Bugfix, wirkt sofort)
+
+`AddressExtension::updateCountryField()` hat die Ländernamen übersetzt, aber die Reihenfolge von
+silvershop behalten – die ist nach dem **englischen** Namen sortiert („Österreich" zwischen
+„Australien" und „Bahamas"). Jetzt per `Collator('de_DE')` neu sortiert.
+
+Migration: keine.
+
 ### Gescheiterter Zahlungsstart führt nicht mehr in die leere Kasse (Bugfix, standardmäßig an)
 
 Mit `Order.place_before_payment: true` (nötig für SEPA/verzögerte Zahlungen) ist die Bestellung

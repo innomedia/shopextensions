@@ -33,6 +33,10 @@ class AddressExtension extends Extension{
             $source[$key] = \Locale::getDisplayRegion('-'.$key, 'de_DE');
         }
 
+        // silvershop sorts by the ENGLISH names before we translate them – without re-sorting,
+        // „Österreich" sits between „Australien" and „Bahamas". Collator: umlauts in place.
+        (new \Collator('de_DE'))->asort($source);
+
         $field->setSource($source)->setEmptyString('Land auswählen');
 
         $controller = \SilverStripe\Control\Controller::curr();
