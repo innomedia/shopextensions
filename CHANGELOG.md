@@ -2,6 +2,23 @@
 
 Format: neueste Version zuerst. „Migration" = was ein Projekt beim Update tun muss.
 
+## 6.1.1 (unveröffentlicht)
+
+### Gescheiterter Zahlungsstart führt nicht mehr in die leere Kasse (Bugfix, standardmäßig an)
+
+Mit `Order.place_before_payment: true` (nötig für SEPA/verzögerte Zahlungen) ist die Bestellung
+schon „Unpaid", wenn der Zahlungsstart scheitert (Fehler beim Anbieter, abgelehnte Webhook-URL, …).
+silvershop leitete dann zurück in die Kasse, deren Warenkorb inzwischen leer ist: Kundinnen sahen
+„Es befinden sich keine Produkte im Warenkorb" und nie die Fehlermeldung.
+
+Neu: `CheckoutPageControllerExtension::processPaymentResponse()` (Hook von `PaymentForm`) leitet eine
+platzierte Bestellung auf `<kasse>/order/<ID>` um; dort bietet `OrderActionsForm` das erneute Bezahlen
+an, und `$CheckoutPaymentNotice` erklärt den Fall auch auf dieser Seite (eigener Text
+`PaymentFailedPlacedText`). Nicht platzierte Bestellungen verhalten sich wie bisher.
+
+Migration: `$CheckoutPaymentNotice` ins Template der Bestellseite (`CheckoutPage_order.ss`) aufnehmen.
+Abschalten mit `CheckoutPageControllerExtension.failed_payment_to_order: false`.
+
 ## 6.1.0 (2026-09-22)
 
 ### Betreiber-Mail „Neue Bestellung" nur noch einmal (Bugfix, wirkt nur mit dem Vorkasse-Opt-in)

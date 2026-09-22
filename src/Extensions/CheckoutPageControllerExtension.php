@@ -102,6 +102,16 @@ class CheckoutPageControllerExtension extends Extension
     private static $payment_notice = true;
 
     /**
+     * Failed payment start on an order that is already placed (Order.place_before_payment): send the
+     * customer to the order page to pay again instead of back to the – now empty – checkout.
+     * Bugfix, on by default; unplaced orders keep the core behaviour.
+     *
+     * @config
+     * @var bool
+     */
+    private static $failed_payment_to_order = true;
+
+    /**
      * Replace a bare provider/processor form message with a generic sentence.
      *
      * @config
@@ -262,8 +272,16 @@ class CheckoutPageControllerExtension extends Extension
         }
 
         $order = ShoppingCart::curr();
+        $placed = false;
         if (!$order instanceof Order || !$order->isInDB()) {
-            return null;
+            // Order page (<checkout>/order/<ID>) of a placed order: see processPaymentResponse().
+            $order = $this->owner->getAction() === 'order' && $this->owner->hasMethod('orderfromid')
+                ? $this->owner->orderfromid()
+                : null;
+            if (!$order instanceof Order || $order->IsCart()) {
+                return null;
+            }
+            $placed = true;
         }
 
         /** @var Payment|null $payment */
@@ -286,11 +304,41 @@ class CheckoutPageControllerExtension extends Extension
 
         return ArrayData::create([
             'Title' => _t(self::class . '.PaymentFailedTitle', 'Die Zahlung wurde nicht abgeschlossen.'),
-            'Text' => _t(
-                self::class . '.PaymentFailedText',
-                'Es wurde nichts abgebucht. Ihre Angaben und Ihr Warenkorb sind noch da – wählen Sie eine Zahlart und versuchen Sie es noch einmal.'
-            ),
+            'Text' => $placed
+                ? _t(
+                    self::class . '.PaymentFailedPlacedText',
+                    'Es wurde nichts abgebucht. Ihre Bestellung ist gespeichert – Sie können die Zahlung hier noch einmal starten.'
+                )
+                : _t(
+                    self::class . '.PaymentFailedText',
+                    'Es wurde nichts abgebucht. Ihre Angaben und Ihr Warenkorb sind noch da – wählen Sie eine Zahlart und versuchen Sie es noch einmal.'
+                ),
         ]);
+    }
+
+    /**
+     * Hook of silvershop's PaymentForm::submitpayment() (called when the controller has this method).
+     *
+     * With Order.place_before_payment the order is already "Unpaid" when the payment start fails
+     * (provider error, rejected webhook URL, …). The core then redirects back to the checkout, whose
+     * cart is empty by now: the customer sees "no items in your cart" and never the error. A placed
+     * order goes to its order page instead, where OrderActionsForm offers to pay again and
+     * $CheckoutPaymentNotice says what happened. Everything else behaves like the core.
+     */
+    public function processPaymentResponse($paymentResponse, PaymentForm $form): HTTPResponse
+    {
+        if ($paymentResponse && !$paymentResponse->isError()) {
+            return $paymentResponse->redirectOrRespond();
+        }
+
+        $order = $form->getConfig()->getOrder();
+        if ($this->owner->config()->get('failed_payment_to_order') && $order->isInDB() && !$order->IsCart()) {
+            return $this->owner->redirect(Controller::join_links($this->owner->Link(), 'order', $order->ID));
+        }
+
+        $form->sessionMessage((string) $form->getOrderProcessor()->getError(), 'bad');
+
+        return $this->owner->redirectBack();
     }
 
     /**
