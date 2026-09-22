@@ -2,7 +2,7 @@
 
 Format: neueste Version zuerst. „Migration" = was ein Projekt beim Update tun muss.
 
-## 6.1.1 (unveröffentlicht)
+## 6.1.1 (2026-09-22)
 
 ### Länderauswahl alphabetisch nach deutschem Namen (Bugfix, wirkt sofort)
 
